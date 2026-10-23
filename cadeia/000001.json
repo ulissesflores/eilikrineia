@@ -1,17 +1,23 @@
 {
  "seq": 1,
- "data": "2026-10-23T18:21:58Z",
- "papel": "claude",
- "tipo": "fato-medido",
- "compromisso": "315101bd73be3d15b17641e41a68a24b0dd9d27edefeead588d2576d53586e31",
+ "data": "2026-10-23T19:36:31Z",
+ "papel": "ulisses",
+ "tipo": "genese",
+ "compromisso": "c76eca1f67e6c697903ce6564b8cd32c2a0cbbb232c201ffbe9051b53c322b2e",
  "evidencias": [
-  "2313f3080a74b1eaafce18d5e57dc8c31f3bcffa59df236889bc7242a73abdcb",
-  "e280071d517241c35daa1438d44cca5075bbef5cfd4fa9245ddd0f69eb729982",
-  "09fbde92e29a8cf0d7fe6474ec3fee131315e021d9b0694bad064d6121027e52"
+  "9e1db07030a94bd60814ad41d67a00292eb937fa7cac60490eab00075d5b2ac8",
+  "cae28628aa5bbdea042f2c796d62b4f72ae8002abe442517aa2177aa4792fcec",
+  "ceb489ea4834249b3411eb192715f90cf23f9a561d61633d21cb60541edbc638"
  ],
  "corrige": null,
  "audita": null,
  "anterior": "0000000000000000000000000000000000000000000000000000000000000000",
- "hash": "44d00d7b0356b57fca4acf11943d159de24e476e0853cdec24acf7ba71b5f418",
- "assinatura": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgpLgDbSz4Wcj6IQXOVQgUJe8ZM1\nGePUqJ8+IbfsmtWF0AAAALZWlsaWtyaW5laWEAAAAAAAAABnNoYTUxMgAAAFMAAAALc3No\nLWVkMjU1MTkAAABAOzsZva72XiQBT9qtpfFvdJ2nIWdVP9PscTiXUI+dnAsfRn6E+NWhJM\nBrmCUnb+4cC0oQ/PQFifP/sasrlGxuCQ==\n-----END SSH SIGNATURE-----\n"
+ "chaves_sha256": "9e1db07030a94bd60814ad41d67a00292eb937fa7cac60490eab00075d5b2ac8",
+ "antecessora": {
+  "versao": "v0",
+  "entradas": 45,
+  "topo": "e601e981d4b2c2869cbf02826e99bed46708bdf4dfa7aa6367885a039133b396"
+ },
+ "hash": "dd9d03c70db2f3d60eb1a1f161dd11758772fb77069de206a70d50379a75b857",
+ "assinatura": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg9KS6cpa/PN74EnaBrZI6RQA05Z\nYdH2RvNAcNRHcIjnEAAAALZWlsaWtyaW5laWEAAAAAAAAABnNoYTUxMgAAAFMAAAALc3No\nLWVkMjU1MTkAAABAZDwmyyCmwtFg34xJ3Vewe0g4nPuTFJFf8HEoL8KblNtje4cUkxIurZ\n5+O5bC22OLGbQUqUREVMQ4FesWVWfIAQ==\n-----END SSH SIGNATURE-----\n"
 }
