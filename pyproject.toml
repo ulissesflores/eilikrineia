@@ -1,6 +1,6 @@
 [project]
 name = "eilikrineia"
-version = "0.2.0"
+version = "0.3.0"
 description = "A public commitment ledger between a person and the AI agents working for them: owner-rooted hash chain, typed claims checked by code, excerpt-only audit by another vendor, Bitcoin timestamps."
 readme = "README.md"
 requires-python = ">=3.11"

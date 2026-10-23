@@ -3,6 +3,13 @@
 All notable changes are listed here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/). No release exists yet; no DOI before the owner authorizes it.
 
+## [0.3.0] — 2026-10-23
+
+### Changed
+- One checkpoint per auditor run carries every verdict of that run (was one audit entry per audited entry).
+- An idle ledger adds nothing: no checkpoint when nothing new was recorded (was one per scheduled run).
+- The evidence vault stores gzip copies named by the hash of the original bytes; `compact` converts older copies.
+
 ## [0.2.0] — 2026-10-23
 
 ### Changed

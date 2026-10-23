@@ -7,7 +7,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![Docs: CC BY 4.0](https://img.shields.io/badge/Docs-CC_BY_4.0-lightgrey.svg)](LICENSES/CC-BY-4.0.txt)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-unittest_(19_passing)-brightgreen.svg)](tests)
+[![Tests](https://img.shields.io/badge/tests-unittest_(20_passing)-brightgreen.svg)](tests)
 [![Dependencies](https://img.shields.io/badge/dependencies-stdlib_%2B_ssh--keygen-blue.svg)](eilikrineia.py)
 
 </div>
@@ -50,8 +50,9 @@ Plato's *Phaedo* (65e–66a) describes seeking truth "with pure thought, itself 
 2. **Audit that does not read everything.** Claims are typed. Counts, matches and values are decided by code. The
    auditor model reads only excerpts of at most 2,000 characters, cut from immutable vault copies with a proof of
    position and hash; large files are attached by hash and never sent to a model. Assertions to the owner are always
-   audited; automated measurements are sampled with a seed taken from a later head; audits are incremental from the
-   last auditor-signed checkpoint.
+   audited; automated measurements are sampled with a seed taken from a later head. Each auditor run signs one
+   checkpoint that carries all its verdicts, audits only what came after the previous one, and an idle ledger adds
+   nothing.
 3. **No silent rewrite.** A witness in the auditor's separate account records every entry hash within seconds of it
    being written; an entry already seen that changes or vanishes raises a signed alarm. Published history is
    protected by the remote's branch protection, Software Heritage and OpenTimestamps.
@@ -150,7 +151,7 @@ stamps/             OpenTimestamps proofs of the head
 history/            earlier ledgers (v0, v1) and the frozen script that verifies them
 scripts/            auditor job and macOS installer (separate account, pinned code, deploy key)
 tests/              one test per guarantee above
-private/            never published: texts, salts, evidence vault, private keys, audit replies
+private/            never published: texts, salts, gzip evidence vault, private keys, audit replies
 ```
 
 ## Author

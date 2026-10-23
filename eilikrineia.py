@@ -17,6 +17,7 @@ ponytail: one file on purpose, so that anyone can verify by downloading a single
 
 import argparse
 import datetime
+import gzip
 import hashlib
 import json
 import os
@@ -38,8 +39,8 @@ TYPES = (
     "opinion",  # hypothesis or recommendation; never judged as fact
     "correction",  # supersedes an earlier entry, which stays
     "run",  # a unit of work: inputs and outputs attached by hash
-    "audit",  # auditor verdict on one entry
-    "checkpoint",  # auditor: "verified through #N"
+    "audit",  # auditor alarm (witness): an entry already seen changed or vanished
+    "checkpoint",  # auditor: "verified through #N", carrying every verdict of that run
     "decision",  # owner only
     "genesis",  # owner only; first entry
     "keys",  # owner only; new key list
@@ -154,14 +155,44 @@ def signature_ok(role, message, signature, root=None, when=None):
 
 
 def vault_put(path, root=None):
-    """Copy a file into the content-addressed vault and return its SHA-256."""
+    """Store a gzip copy of a file in the content-addressed vault; the name is the SHA-256 of the ORIGINAL bytes."""
     digest = sha256_file(path)
-    target = layout(root)["vault"] / digest
-    if not target.exists():
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(path, target)
+    vault = layout(root)["vault"]
+    target = vault / f"{digest}.gz"
+    if not (target.exists() or (vault / digest).exists()):
+        vault.mkdir(parents=True, exist_ok=True)
+        with open(path, "rb") as src, gzip.GzipFile(target, "wb", mtime=0) as dst:  # mtime=0: same bytes every time
+            shutil.copyfileobj(src, dst)
         os.chmod(target, 0o444)
     return digest
+
+
+def vault_read(digest, root=None):
+    """Return the original bytes of a vault copy (gzip, or a plain copy from before compression), or None."""
+    vault = layout(root)["vault"]
+    try:
+        if (vault / f"{digest}.gz").exists():
+            return gzip.decompress((vault / f"{digest}.gz").read_bytes())
+        if (vault / digest).exists():
+            return (vault / digest).read_bytes()
+    except (OSError, EOFError, gzip.BadGzipFile):
+        return b""  # unreadable copy: hashes to something else, so it is reported as altered
+    return None
+
+
+def compact(root=None):
+    """Compress plain vault copies made before compression existed, after checking each one's hash."""
+    vault, done = layout(root)["vault"], 0
+    for f in sorted(vault.glob("*")):
+        if f.suffix == ".gz" or len(f.name) != 64 or f.stat().st_uid != os.getuid() or sha256_file(f) != f.name:
+            continue  # only copies this account owns (the auditor's own copies stay as they are)
+        with open(f, "rb") as src, gzip.GzipFile(vault / f"{f.name}.gz", "wb", mtime=0) as dst:
+            shutil.copyfileobj(src, dst)
+        os.chmod(vault / f"{f.name}.gz", 0o444)
+        f.chmod(0o644)
+        f.unlink()
+        done += 1
+    return {"compressed": done}
 
 
 def cut(text, locator):
@@ -197,7 +228,7 @@ def cut(text, locator):
 
 def excerpt(digest, locator, root=None):
     """Re-cut an excerpt from the vault copy and return ``(text, sha256)``."""
-    text = (layout(root)["vault"] / digest).read_text(errors="replace")
+    text = (vault_read(digest, root) or b"").decode(errors="replace")
     piece = cut(text, locator)
     return piece, sha256_bytes(piece.encode())
 
@@ -430,12 +461,11 @@ def _verify_private(e, root):
     out = []
     if sha256_bytes(bytes.fromhex(d["salt"]) + canonical(body)) != e["commitment"]:
         out.append(f"#{e['seq']}: private text does not match the public commitment")
-    vault = layout(root)["vault"]
     for item in [c["evidence"] for c in d["claims"]] + d["attachments"]:
-        copy = vault / item["sha256"]
-        if not copy.is_file():
+        data = vault_read(item["sha256"], root)
+        if data is None:
             out.append(f"#{e['seq']}: missing from the vault: {item['file']}")
-        elif sha256_file(copy) != item["sha256"]:  # the vault copy is the proof; it must hash to its own name
+        elif sha256_bytes(data) != item["sha256"]:  # the vault copy is the proof; it must hash to its own name
             out.append(f"#{e['seq']}: vault copy altered: {item['file']}")
         elif "locator" in item and excerpt(item["sha256"], item["locator"], root)[1] != item["excerpt_sha256"]:
             out.append(f"#{e['seq']}: excerpt no longer matches: {item['file']}")
@@ -528,22 +558,25 @@ def sampled(entry, head):
 
 
 def audit(root=None, auditor="grok", ask=call_auditor):
-    """Audit every entry recorded since the last checkpoint, then sign a new checkpoint.
+    """Audit every entry recorded since the last checkpoint and sign ONE checkpoint that carries all verdicts.
 
     Mechanical claims are decided by code. The model reads only excerpts (never whole files), and only for
-    assertions and corrections (always) and a sample of measured/run entries. Opinions are never judged.
+    assertions and corrections (always) and a sample of measured/run entries. Opinions are never judged. Nothing
+    new since the last checkpoint means no entry at all: an idle ledger does not grow.
     """
     lay = layout(root)
     chain = entries(root)
     since = last_checkpoint(chain)
+    new = [e for e in chain[since:] if e["role"] != "auditor"]
+    if not new:
+        return {"audited": [], "checkpoint": None}
     v = verify(root, private=True, since=since)
     if not v["ok"]:
         raise SystemExit("Verification failed; nothing audited: " + "; ".join(v["problems"]))
-    head, done = chain[-1]["hash"], []
-    audited = {e.get("audits") for e in chain if e.get("type") == "audit"}
-    for e in chain[since:]:
+    head, results = chain[-1]["hash"], []
+    for e in new:
         # opinions are never judged; owner entries are decisions, checked by code (signature, pinned hashes)
-        if e["type"] in AUDITOR_ONLY + OWNER_ONLY or e["type"] == "opinion" or e["hash"] in audited:
+        if e["type"] in OWNER_ONLY or e["type"] == "opinion":
             continue
         d = json.loads((lay["texts"] / f"{e['seq']:06d}.json").read_text())
         mech, pieces = [], []
@@ -553,9 +586,8 @@ def audit(root=None, auditor="grok", ask=call_auditor):
             pieces.append(f"--- {c['evidence']['file']} {c['evidence']['locator']} ---\n{piece}")
             if passed is not None:
                 mech.append({"predicate": c["predicate"], "passed": passed, "detail": detail})
-        semantic = e["type"] in ("assertion", "correction") or sampled(e, head)
-        result = {"audits_seq": e["seq"], "mechanical": mech}
-        if semantic:
+        result = {"seq": e["seq"], "hash": e["hash"], "mechanical": mech}
+        if e["type"] in ("assertion", "correction") or sampled(e, head):
             prompt = AUDIT_PROMPT.format(
                 kind=e["type"], text=d["text"],
                 mech=json.dumps(mech, ensure_ascii=False) or "none",
@@ -566,14 +598,20 @@ def audit(root=None, auditor="grok", ask=call_auditor):
             result["semantic"] = "not sampled"
         if any(not m["passed"] for m in mech):
             result["verdict"] = "unsupported"
-        reply = lay["audits"] / f"{e['seq']:06d}-{auditor}.json"
-        reply.parent.mkdir(parents=True, exist_ok=True)
-        reply.write_text(json.dumps(result, ensure_ascii=False, indent=1))
-        r = record("auditor", "audit", json.dumps(result, ensure_ascii=False), attachments=[reply],
-                   audits=e["hash"], root=root)  # fmt: skip
-        done.append({"seq": e["seq"], "verdict": result.get("verdict", "mechanical only"), "entry": r["seq"]})
-    cp = record("auditor", "checkpoint", f"Verified through #{entries(root)[-1]['seq']}.", root=root)
-    return {"audited": done, "checkpoint": cp["seq"]}
+        results.append(result)
+    through = chain[-1]["seq"]
+    reply = lay["audits"] / f"through-{through:06d}-{auditor}.json"
+    reply.parent.mkdir(parents=True, exist_ok=True)
+    reply.write_text(json.dumps(results, ensure_ascii=False, indent=1))
+    summary = {
+        "through": through,
+        "results": [
+            {k: r[k] for k in ("seq", "hash") if k in r} | {"verdict": r.get("verdict", "mechanical only")}
+            for r in results
+        ],
+    }
+    cp = record("auditor", "checkpoint", json.dumps(summary, ensure_ascii=False), attachments=[reply], root=root)
+    return {"audited": summary["results"], "checkpoint": cp["seq"]}
 
 
 # ---------- witness: no silent rewrite of the unpublished tail ----------
@@ -807,6 +845,7 @@ def main(argv=None):
     rt.add_argument("new_public", type=Path)
     pc = sub.add_parser("pinned-ok")
     pc.add_argument("code", type=Path)
+    sub.add_parser("compact")
     sub.add_parser("stamp")
     sub.add_parser("publish").add_argument("--no-push", action="store_true")
     sub.add_parser("reveal").add_argument("seq", type=int)
@@ -831,6 +870,8 @@ def main(argv=None):
         out = rotate(a.role, a.new_public, a.root)
     elif a.cmd == "pinned-ok":
         out = {"ok": pinned_ok(a.code, a.root)}
+    elif a.cmd == "compact":
+        out = compact(a.root)
     elif a.cmd == "stamp":
         out = stamp(a.root)
     elif a.cmd == "publish":

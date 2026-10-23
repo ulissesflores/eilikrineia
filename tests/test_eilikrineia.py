@@ -110,10 +110,22 @@ class Tampering(Ledger):
         self.measured()
         self.log.write_text("rewritten after the fact\n")  # the original may change; the vault copy is the proof
         self.assertTrue(ek.verify(self.root, private=True)["ok"])
-        copy = next((self.root / "private" / "vault").iterdir())
-        copy.chmod(0o644)
-        copy.write_text("forged\n" * 10)
+        for copy in (self.root / "private" / "vault").iterdir():
+            copy.chmod(0o644)
+            copy.write_bytes(b"forged")
         self.assertFalse(ek.verify(self.root, private=True)["ok"])
+
+    def test_vault_is_compressed_and_old_plain_copies_still_count(self):
+        digest = ek.vault_put(self.log, self.root)
+        stored = (self.root / "private" / "vault" / f"{digest}.gz").stat().st_size
+        self.assertLess(stored * 4, self.log.stat().st_size)  # text shrinks more than 4x
+        plain = Path(self._d.name) / "plain.txt"
+        plain.write_text("a copy made before compression existed\n" * 50)
+        old = ek.sha256_file(plain)
+        shutil.copyfile(plain, self.root / "private" / "vault" / old)  # legacy layout: plain file named by hash
+        self.assertEqual(ek.vault_read(old, self.root), plain.read_bytes())
+        self.assertEqual(ek.compact(self.root), {"compressed": 1})
+        self.assertEqual(ek.vault_read(old, self.root), plain.read_bytes())
 
 
 class Claims(Ledger):
@@ -148,24 +160,23 @@ class Audit(Ledger):
             prompts.append(prompt)
             return '{"verdict": "supported", "reason": "line 3: Ran 25 tests"}'
 
+        size = len(ek.entries(self.root))
         out = ek.audit(self.root, ask=fake)
         verdicts = {a["seq"]: a["verdict"] for a in out["audited"]}
-        self.assertEqual(verdicts[3], "supported")
-        self.assertNotIn(4, verdicts)  # opinion never judged
-        self.assertNotIn(1, verdicts)  # owner genesis decided by code, not a model
+        self.assertEqual(verdicts, {2: "unsupported", 3: "supported"})  # opinion and owner genesis not judged
         self.assertTrue(all(len(p) < 4000 for p in prompts))  # never a whole file
         self.assertTrue(all("line 300" not in p for p in prompts))
-        failed = json.loads((self.root / "private" / "audits" / "000002-grok.json").read_text())
-        self.assertEqual(failed["verdict"], "unsupported")
-        self.assertEqual(ek.entries(self.root)[-1]["type"], "checkpoint")
+        chain = ek.entries(self.root)
+        self.assertEqual(len(chain), size + 1)  # ONE checkpoint carries every verdict of the run
+        self.assertEqual(chain[-1]["type"], "checkpoint")
         self.assertTrue(ek.verify(self.root, private=True)["ok"])
 
-    def test_audit_is_incremental(self):
+    def test_audit_is_incremental_and_idle_adds_nothing(self):
         self.measured()
         ek.audit(self.root, ask=lambda p, a: '{"verdict": "supported", "reason": "ok"}')
-        calls = []
+        size, calls = len(ek.entries(self.root)), []
         out = ek.audit(self.root, ask=lambda p, a: calls.append(p) or '{"verdict": "supported", "reason": "ok"}')
-        self.assertEqual((out["audited"], calls), ([], []))
+        self.assertEqual((out, calls, len(ek.entries(self.root))), ({"audited": [], "checkpoint": None}, [], size))
 
     def test_parse_verdict(self):
         self.assertEqual(

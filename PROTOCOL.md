@@ -20,13 +20,15 @@ breaks the mechanical rules; the auditor judges the rest.
 | `opinion` | hypothesis, recommendation | none; never judged as fact |
 | `correction` | the agent was wrong or changed position | points to the corrected entry, which stays |
 | `run` | a unit of work | inputs and outputs attached by hash |
-| `audit`, `checkpoint` | auditor verdicts; "verified through #N" | the auditor's raw reply, attached by hash |
+| `checkpoint` | one per auditor run: "verified through #N" with every verdict of the run | the auditor's raw replies, attached by hash |
+| `audit` | auditor alarm: an entry already witnessed changed or vanished | the alarm report |
 | `genesis`, `keys`, `code`, `decision` | owner only | — |
 
 ## Evidence: never whole files
 
 - **Claim**: `{"predicate", "args", "evidence": "FILE:FIRST-LAST"}` or `"FILE#/json/pointer"`.
-- The program copies the file into the vault (content-addressed, read-only), cuts the excerpt and stores its hash.
+- The program copies the file into the vault (gzip, named by the SHA-256 of the original bytes, read-only), cuts the
+  excerpt and stores its hash.
   An excerpt longer than 2,000 characters is refused: narrow the locator.
 - Predicates `number`, `contains`, `equals` are decided by code. Only `semantic` claims reach a model, and the model
   receives only the excerpts.
