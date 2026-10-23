@@ -1,0 +1,14 @@
+{
+  "title": "eilikrineia: a public commitment ledger between a person and the AI agents working for them",
+  "upload_type": "software",
+  "description": "Single-file, standard-library commitment ledger for AI agents: owner-rooted hash chain, typed claims checked by code, excerpt-only audit by a model from another vendor, witness against silent rewriting, OpenTimestamps anchoring. No DOI without the operator's explicit authorization.",
+  "version": "0.2.0",
+  "language": "eng",
+  "license": "Apache-2.0",
+  "access_right": "closed",
+  "keywords": ["accountability", "AI agents", "hash chain", "transparency log", "audit", "OpenTimestamps"],
+  "creators": [
+    {"name": "Flores, Carlos Ulisses", "orcid": "0000-0002-6034-7765",
+     "affiliation": "Codex Hash Research Laboratory, Codex Hash Ltda., Brazil"}
+  ]
+}

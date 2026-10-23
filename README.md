@@ -1,146 +1,191 @@
-# εἰλικρίνεια · eilikrineia
+<div align="center">
 
-> *Julgado à luz do sol.*
+# eilikrineia
 
-Um registro público de compromissos entre uma pessoa e os agentes de IA que trabalham para ela. Cada afirmação
-feita por um agente é comprometida por hash, encadeada à anterior, assinada, auditada por um agente de outro
-fornecedor e carimbada no tempo pelo Bitcoin. O conteúdo não precisa ser publicado para ser cobrado. O que se publica
-é a impossibilidade de mudar o que foi dito sem que se veja.
+**A public commitment ledger between a person and the AI agents working for them.**
 
----
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
+[![Docs: CC BY 4.0](https://img.shields.io/badge/Docs-CC_BY_4.0-lightgrey.svg)](LICENSES/CC-BY-4.0.txt)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![Tests](https://img.shields.io/badge/tests-unittest_(19_passing)-brightgreen.svg)](tests)
+[![Dependencies](https://img.shields.io/badge/dependencies-stdlib_%2B_ssh--keygen-blue.svg)](eilikrineia.py)
 
-## A palavra
+</div>
 
-**εἰλικρίνεια** (*eilikríneia*) é a palavra grega para pureza de intenção, sinceridade, aquilo que não tem mistura.
-O adjetivo é **εἰλικρινής** (*eilikrinḗs*): puro, sem liga.
+> [!IMPORTANT]
+> An agent that says "done", "tested" or "it works" commits that sentence here first, with evidence. What code can
+> check is checked by code. What it cannot is read by a model from another vendor, which sees only short excerpts the
+> program cut and proved, never whole files. The owner signs the root, every key change and every change to the
+> auditor's code. Nothing is edited; changing position is a visible correction.
 
-A explicação tradicional dos léxicos junta duas partes: **εἵλη** (*heílē*), o raio do sol, e **κρίνω** (*krínō*),
-julgar, separar, discernir. Eilikrinḗs seria o que foi **examinado contra a luz do sol e achado sem defeito**.
+## The word
 
-Os próprios léxicos chamam essa origem de provável, não de certa. Richard Trench, nos *Sinônimos do Novo Testamento*,
-lê a palavra menos como "transparente" e mais como **purgado, peneirado, sem mistura**. Outra conjectura antiga a liga
-a algo limpo por ser rolado de um lado a outro. A origem é incerta.
+**εἰλικρίνεια** (*eilikríneia*) is the Greek word for sincerity, purity of intent, what has no admixture. Lexicons
+traditionally read it as **εἵλη** (*heílē*, the sun's ray) + **κρίνω** (*krínō*, to judge): *tested against the light
+of the sun and found without flaw*. The derivation is probable, not settled; Trench reads the word less as
+"transparent" than as **sifted, purged, unmixed**. This project keeps both images, and the uncertainty with them:
+the light is public exposure; the sieve separates what is supported from what is not.
 
-Este projeto guarda as duas imagens e a incerteza junto delas:
+There is a famous story that Latin *sincerus* means *sine cera*, "without wax", from potters who hid cracks with wax.
+It is a folk etymology that dictionaries reject. We tell it on purpose: a ledger of sincerity that opened with a
+pretty, false etymology would be its own first violation.
 
-- **A luz do sol:** expor ao público aquilo que se afirma, para que qualquer um examine.
-- **A peneira:** separar o que é sustentado do que não é, sem misturar fato com opinião.
+Plato's *Phaedo* (65e–66a) describes seeking truth "with pure thought, itself by itself"
+(*αὐτῇ καθ᾽ αὑτὴν εἰλικρινεῖ τῇ διανοίᾳ*); Paul uses *eilikríneia* for conduct that can be shown and examined
+(2 Corinthians 1:12; 2:17). The light that exposes and the examination without admixture become mechanism:
 
-### A lenda que não usamos
-
-Existe uma história famosa sobre a palavra latina *sincerus*: os oleiros romanos tapariam rachaduras com cera, e o
-vaso honesto seria *sine cera*, "sem cera". É uma história bonita e é falsa. Dicionários como o Oxford e o
-Merriam-Webster a rejeitam, e a origem mais aceita de *sincerus* é "de um só crescimento", não misturado.
-
-Contamos isso de propósito. Um registro de sinceridade que abrisse com uma etimologia falsa porque ela soa melhor
-seria a primeira violação do próprio protocolo. Aqui, nem a nossa história sobre o nome passa sem marcar o que é
-certo e o que é provável.
-
-## Por que funciona
-
-Platão, no *Fédon* (65e–66a), descreve quem busca a verdade usando "o pensamento puro, ele mesmo por si mesmo"
-(*αὐτῇ καθ᾽ αὑτὴν εἰλικρινεῖ τῇ διανοίᾳ*): sem deixar que nada de fora se misture ao exame. Paulo usa *eilikríneia*
-para falar de uma conduta que pode ser mostrada e examinada (2 Coríntios 1:12; 2:17).
-
-As duas ideias, a luz que expõe e o exame sem mistura, viram mecanismo:
-
-| Ideia | Mecanismo |
+| Idea | Mechanism |
 |---|---|
-| Ser examinado à luz do sol | Repositório público e carimbo no Bitcoin: qualquer pessoa verifica, sem pedir licença |
-| Não ter mistura | Hash: mudar uma vírgula muda o hash inteiro; não há como alterar "um pouco" |
-| Não trocar o que foi dito | Cadeia: cada entrada carrega o hash da anterior; reescrever uma quebra todas as seguintes |
-| Mudar de ideia sem esconder | Correção é nova entrada que aponta a antiga; a antiga continua lá |
-| Quem julga não é quem afirma | Auditor de outro fornecedor, em outra conta, assina o veredito |
-| Pureza sem exposição | Compromisso com sal: publica-se o hash, o texto fica guardado até ser revelado |
+| Examined in the light of the sun | Public repository and Bitcoin timestamps: anyone verifies, without asking |
+| Without admixture | SHA-256: changing one comma changes the whole hash |
+| What was said cannot be swapped | Chain: each entry carries the previous hash |
+| Changing one's mind in the open | A correction is a new entry pointing at the old one, which stays |
+| The judge is not the one who asserts | An auditor from another vendor, in another OS account, signs the verdict |
+| Purity without exposure | Salted commitment: the hash is public, the text stays private until revealed |
 
-## O que este repositório prova e o que não prova
+## What it contributes
 
-**Prova:**
-- que cada entrada existia, exatamente assim, até a data do carimbo no Bitcoin;
-- que nenhuma entrada foi alterada ou removida depois;
-- qual chave assinou cada entrada e cada veredito;
-- que toda mudança de posição ficou registrada como correção.
+1. **Owner-rooted trust.** The first entry is the owner's genesis, signed with a passphrase-protected key. The key
+   list and the auditor's code change only with an owner-signed entry; the verifier rejects anything else.
+2. **Audit that does not read everything.** Claims are typed. Counts, matches and values are decided by code. The
+   auditor model reads only excerpts of at most 2,000 characters, cut from immutable vault copies with a proof of
+   position and hash; large files are attached by hash and never sent to a model. Assertions to the owner are always
+   audited; automated measurements are sampled with a seed taken from a later head; audits are incremental from the
+   last auditor-signed checkpoint.
+3. **No silent rewrite.** A witness in the auditor's separate account records every entry hash within seconds of it
+   being written; an entry already seen that changes or vanishes raises a signed alarm. Published history is
+   protected by the remote's branch protection, Software Heritage and OpenTimestamps.
 
-**Não prova:**
-- que uma afirmação é verdadeira. Prova que ela é rastreável, contestável e cara de sustentar se for falsa;
-- qual modelo pensou. Prova qual chave assinou;
-- o que nunca foi registrado. Omissão é o ponto mais fraco, e o auditor procura por ela.
+```mermaid
+flowchart LR
+    C[Typed claim<br/>predicate + args] --> P{Decidable by code?}
+    E[Evidence = file hash<br/>+ line range or JSON pointer] --> X[Program cuts the excerpt<br/>from the vault copy<br/>and proves it]
+    X --> P
+    P -->|number, contains, equals| M[Code decides]
+    P -->|semantic| S{Assertion?<br/>or sampled}
+    S -->|yes| L[Auditor model reads<br/>ONLY the excerpts]
+    M --> K[Auditor-signed checkpoint<br/>verified through #N]
+    L --> K
+```
 
-## Verifique sem confiar em ninguém
+## Quick start
+
+Verify the public ledger (no private data, no keys needed; Python 3.11+ and OpenSSH 8.9+):
 
 ```bash
-git clone https://github.com/<conta>/eilikrineia
+git clone https://github.com/ulissesflores/eilikrineia
 cd eilikrineia
-python3 eilikrineia.py verificar
+python3 eilikrineia.py verify
 ```
 
-Só precisa de Python 3 e do `ssh-keygen` (OpenSSH 8.1 ou mais novo). O verificador confere a sequência, o encadeamento,
-o hash de cada entrada, a assinatura de cada uma contra as chaves públicas em `chaves/allowed_signers` e as regras do
-protocolo. A prova de tempo no Bitcoin (pasta `tempo/`) entra quando o carimbo for ligado.
-
-Quem tem a pasta privada confere também que cada texto bate com o compromisso público e que nenhuma evidência mudou
-depois do registro:
-
-```bash
-python3 eilikrineia.py verificar --privado
-```
-
-## Estrutura
+Expected output (counts grow as the ledger grows):
 
 ```text
-eilikrineia.py   registrar, verificar, auditar, revelar (biblioteca padrão + ssh-keygen)
-PROTOCOLO.md     as regras que qualquer agente segue para escrever aqui
-chaves/          chaves públicas dos papéis: pessoa, agente, auditor
-cadeia/          uma entrada por arquivo, só hashes e assinaturas
-tempo/           provas OpenTimestamps do topo da cadeia (quando ligado)
-tests/           testes, incluindo os de adulteração
-privado/         NUNCA publicado: textos, sais, caminhos de evidência, chaves privadas, respostas do auditor
+{
+  "ok": true,
+  "entries": <N>,
+  "head": "<64 hex>",
+  "problems": [],
+  "trust_root": "owner genesis"
+}
 ```
 
-## Fontes
+Run the tests:
 
-- Léxicos gregos sobre εἰλικρίνεια e εἰλικρινής: [Bible Hub 1505](https://biblehub.com/greek/1505.htm),
-  [Bible Hub 1506](https://biblehub.com/greek/1506.htm), [Blue Letter Bible G1506](https://www.blueletterbible.org/lexicon/G1506/tr).
-- Trench, *Sinônimos do Novo Testamento*, verbete sobre εἰλικρινής: [texto](https://modernliteralversion.org/bibles/bs2/G5625up/Trench-85.htm).
-- A lenda *sine cera* e a origem de *sincerus*: [Etymonline](https://www.etymonline.com/word/sincere),
-  [Grammarphobia](https://grammarphobia.com/blog/2012/03/sincere.html), [Wikipedia](https://en.wikipedia.org/wiki/Sincerity).
-- Platão, *Fédon*, texto grego e tradução de Fowler: [Ellopos](https://www.ellopos.net/elpenor/greek-texts/ancient-greece/plato-death.asp?pg=13),
-  [Perseus](https://cts.perseids.org/read/greekLit/tlg0059/tlg004/perseus-eng2/65-66).
-- OpenTimestamps: [opentimestamps.org](https://opentimestamps.org/), [anúncio de Peter Todd](https://petertodd.org/2016/opentimestamps-announcement).
+```bash
+python3 -m unittest discover -s tests -v
+```
 
-## A raiz de confiança é do dono
+Start your own ledger:
 
-Uma cadeia assinada só por chaves de agente pode ser refeita do zero por quem tem acesso às chaves. Por isso a cadeia
-começa pela **gênese do dono**: a primeira entrada é assinada pela chave da pessoa, protegida por uma senha que o
-agente nunca vê, e se compromete com a lista de chaves válidas. Qualquer mudança nessa lista (entrada `chaves`) também
-exige a assinatura dela; o verificador reprova uma lista diferente da última assinada.
+```bash
+python3 eilikrineia.py --root my-ledger init                          # agent and auditor keys
+ssh-keygen -t ed25519 -f my-ledger/private/keys/owner                 # YOUR key, with a passphrase
+python3 eilikrineia.py --root my-ledger init                          # publishes your public key
+python3 eilikrineia.py --root my-ledger genesis                       # you sign the root
+python3 eilikrineia.py --root my-ledger record --role agent --type opinion --text "First note."
+```
 
-Duas coisas tornam a gênese impossível de falsificar depois:
+See [`PROTOCOL.md`](PROTOCOL.md) for roles, types, claims and the rules an agent follows.
 
-- a **impressão digital da chave do dono**, guardada por ele fora da máquina;
-- o **carimbo no Bitcoin** e o **arquivamento no Software Heritage** logo após a gênese: uma gênese refeita depois
-  teria data posterior.
+## What is and isn't guaranteed
 
-A cadeia anterior à gênese, feita só com chaves de agente, fica inteira em `historico/v0/` e a gênese se compromete
-com o topo dela (campo `antecessora`). O verificador diz qual é a raiz de confiança de cada cadeia.
+**Guaranteed, and tested** ([`tests/`](tests)):
+- every entry existed exactly as published at its timestamp; none was altered or removed afterwards;
+- which key signed each entry, checked against the keys valid at the entry's time;
+- the key list and the auditor's code are the ones the owner last signed;
+- every excerpt an auditor read is the one recorded, from the file whose hash was committed;
+- a rewrite of entries already witnessed is detected and alarmed.
 
-## Estado
+**Not guaranteed:**
+- that a statement is true. It is traceable, contestable and costly to sustain if false;
+- which model produced a sentence: a signature proves a key, not a mind;
+- what was never recorded. Omission has no mechanical lock; the protocol makes it a failure;
+- a few seconds remain between an agent writing an entry and the witness recording it.
 
-- Cadeia, verificador e auditor funcionando desde 2026-10-23. O auditor é um modelo de outro fornecedor, chamado pela
-  assinatura do próprio fornecedor, e assina os vereditos com a chave dele.
-- Cada publicação carimba o topo da cadeia no OpenTimestamps (pasta `tempo/`). Um carimbo novo fica pendente até ser
-  incluído num bloco do Bitcoin, o que leva algumas horas; a publicação seguinte completa os pendentes. Para conferir
-  um carimbo completo: `ots verify tempo/<seq>.txt.ots` (precisa de um nó de Bitcoin seu) ou o verificador em
-  https://opentimestamps.org.
-- Evidências ficam num acervo privado, endereçado pelo próprio hash: o arquivo original pode mudar, a prova não.
-- Erros ficam na cadeia. As primeiras entradas incluem correções do próprio agente, várias julgadas "parcial" pelo
-  auditor, e quatro evidências perdidas porque o agente alterou depois um arquivo que tinha citado. O verificador as
-  lista como "reconhecidas".
+**Frozen, not re-runnable:** the ledgers in [`history/`](history). `v0` (agent-only keys) and `v1` (first owner
+genesis) were recorded in Portuguese with the schema of that time; their field names are part of their hashes and
+stay as they were. Verify them with the frozen script:
 
-## Limites conhecidos
+```bash
+python3 history/eilikrineia_v1.py --raiz history/v1 verificar
+python3 history/eilikrineia_v1.py --raiz history/v0 verificar
+```
 
-- O auditor ainda roda na mesma conta do sistema que o agente. A separação em outra conta está pronta em
-  `instalar-auditor-separado.sh` e depende da senha de administrador do dono.
-- Omissão: a cadeia impede alterar o que foi registrado, mas não obriga a registrar.
-- A etimologia acima ainda será conferida em Beekes (*Etymological Dictionary of Greek*) e Chantraine (*DELG*), e o
-  número exato de Stephanus da passagem do *Fédon*.
+## Integrity
+
+The chain is its own provenance: there is no second seal. `python3 eilikrineia.py verify` recomputes every hash,
+link and signature from the public files. Each publication timestamps the head with
+[OpenTimestamps](https://opentimestamps.org) (`stamps/*.ots`, upgraded once confirmed in a Bitcoin block), and the
+repository is archived by [Software Heritage](https://archive.softwareheritage.org).
+
+## Layout
+
+```text
+eilikrineia.py      the whole tool: record, verify, audit, witness, genesis, rotate, stamp, publish
+PROTOCOL.md         rules any agent follows to write here
+chain/              one public entry per file: hashes, links, signatures
+keys/               allowed_signers: the public keys of owner, agent and auditor
+stamps/             OpenTimestamps proofs of the head
+history/            earlier ledgers (v0, v1) and the frozen script that verifies them
+scripts/            auditor job and macOS installer (separate account, pinned code, deploy key)
+tests/              one test per guarantee above
+private/            never published: texts, salts, evidence vault, private keys, audit replies
+```
+
+## Author
+
+**Carlos Ulisses Flores** — Codex Hash Research Laboratory
+
+[![ORCID](https://img.shields.io/badge/ORCID-0000--0002--6034--7765-A6CE39?logo=orcid&logoColor=white)](https://orcid.org/0000-0002-6034-7765)
+[![Website](https://img.shields.io/badge/Website-ulissesflores.com-1f6feb)](https://ulissesflores.com)
+[![Lattes](https://img.shields.io/badge/Lattes%20CV-CNPq-0a7d3c)](http://lattes.cnpq.br/6905246706890561)
+
+## Citation
+
+No DOI has been minted yet. Until then, cite the repository (see [`CITATION.cff`](CITATION.cff)):
+
+```bibtex
+@software{flores2026eilikrineia,
+  author = {Flores, Carlos Ulisses},
+  orcid  = {https://orcid.org/0000-0002-6034-7765},
+  title  = {eilikrineia: a public commitment ledger between a person and the AI agents working for them},
+  year   = {2026},
+  url    = {https://github.com/ulissesflores/eilikrineia}
+}
+```
+
+## License
+
+Dual-licensed: source code under **Apache-2.0** ([`LICENSE`](LICENSE)); documentation under **CC BY 4.0**
+([`LICENSES/CC-BY-4.0.txt`](LICENSES/CC-BY-4.0.txt)). See [`NOTICE`](NOTICE).
+
+## Anchor references
+
+- Lexicons on εἰλικρίνεια / εἰλικρινής: [Bible Hub 1505](https://biblehub.com/greek/1505.htm),
+  [Bible Hub 1506](https://biblehub.com/greek/1506.htm). R. C. Trench, *Synonyms of the New Testament*, on
+  εἰλικρινής: [text](https://modernliteralversion.org/bibles/bs2/G5625up/Trench-85.htm).
+- *Sine cera* as folk etymology: [Etymonline](https://www.etymonline.com/word/sincere),
+  [Grammarphobia](https://grammarphobia.com/blog/2012/03/sincere.html).
+- Plato, *Phaedo*, Greek text and Fowler's translation: [Perseus](https://cts.perseids.org/read/greekLit/tlg0059/tlg004/perseus-eng2/65-66).
+- OpenTimestamps: [opentimestamps.org](https://opentimestamps.org/).

@@ -1,0 +1,13 @@
+eilikrineia — a public commitment ledger between a person and the AI agents working for them
+Copyright 2026 Carlos Ulisses Flores, Codex Hash Research Laboratory.
+
+This repository is dual-licensed:
+
+  * Source code (eilikrineia.py, scripts/, tests/, history/*.py) — Apache License 2.0.
+    See LICENSE and LICENSES/Apache-2.0.txt.
+
+  * Documentation (README.md, PROTOCOL.md, CHANGELOG.md) — Creative Commons
+    Attribution 4.0 International (CC BY 4.0). See LICENSES/CC-BY-4.0.txt.
+
+The ledger itself (chain/, keys/, stamps/, history/) is a public record: hashes,
+public keys, signatures and timestamp proofs. It contains no private text.

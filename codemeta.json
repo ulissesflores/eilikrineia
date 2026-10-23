@@ -1,0 +1,22 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "name": "eilikrineia",
+  "description": "A public commitment ledger between a person and the AI agents working for them: owner-rooted hash chain, typed claims checked by code, excerpt-only audit by another vendor, Bitcoin timestamps.",
+  "version": "0.2.0",
+  "codeRepository": "https://github.com/ulissesflores/eilikrineia",
+  "programmingLanguage": "Python",
+  "runtimePlatform": "Python 3.11+",
+  "license": "https://spdx.org/licenses/Apache-2.0",
+  "keywords": ["accountability", "AI agents", "hash chain", "transparency log", "audit", "OpenTimestamps"],
+  "softwareRequirements": ["OpenSSH >= 8.9 (ssh-keygen -Y)", "opentimestamps-client (optional, to stamp)"],
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Carlos Ulisses",
+      "familyName": "Flores",
+      "@id": "https://orcid.org/0000-0002-6034-7765",
+      "affiliation": {"@type": "Organization", "name": "Codex Hash Research Laboratory, Codex Hash Ltda., Brazil"}
+    }
+  ]
+}

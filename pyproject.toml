@@ -1,0 +1,30 @@
+[project]
+name = "eilikrineia"
+version = "0.2.0"
+description = "A public commitment ledger between a person and the AI agents working for them: owner-rooted hash chain, typed claims checked by code, excerpt-only audit by another vendor, Bitcoin timestamps."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Carlos Ulisses Flores" }]
+keywords = ["accountability", "ai-agents", "hash-chain", "audit", "transparency-log", "opentimestamps"]
+dependencies = []
+
+[project.optional-dependencies]
+timestamp = ["opentimestamps-client>=0.7"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "D"]
+ignore = ["D203", "D213", "D105", "D107"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

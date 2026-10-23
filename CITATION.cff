@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "eilikrineia: a public commitment ledger between a person and the AI agents working for them"
+abstract: >-
+  A single-file, standard-library tool that makes an AI agent's statements to its
+  owner accountable. Every statement is committed by salted hash, chained, signed by
+  its role key and timestamped on Bitcoin through OpenTimestamps. The chain starts
+  with a genesis signed by the owner, who alone can change the key list or the
+  auditor's code. Claims are typed: what code can decide (counts, matches, values)
+  is decided by code; the rest is read by an auditor model from another vendor,
+  which only ever sees short excerpts cut and proven by the program, never whole
+  files. A witness in the auditor's separate account detects silent rewriting of
+  the unpublished tail within seconds.
+type: software
+version: "0.2.0"
+repository-code: "https://github.com/ulissesflores/eilikrineia"
+url: "https://github.com/ulissesflores/eilikrineia"
+authors:
+  - given-names: "Carlos Ulisses"
+    family-names: "Flores"
+    orcid: "https://orcid.org/0000-0002-6034-7765"
+    affiliation: "Codex Hash Research Laboratory, Codex Hash Ltda., Brazil"
+license: Apache-2.0
+keywords:
+  - accountability
+  - AI agents
+  - hash chain
+  - transparency log
+  - audit
+  - OpenTimestamps

@@ -1,5 +1,9 @@
-privado/
+private/
+history/*/privado/
+.venv/
 __pycache__/
 *.pyc
-.venv/
-historico/*/privado/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+CLAUDE.md

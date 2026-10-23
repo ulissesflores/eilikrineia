@@ -1,0 +1,3 @@
+agent namespaces="eilikrineia" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAYwXz7xasKDFk1nvDkZUpAHxz+esn+iBAtG6lg6sUt/
+auditor namespaces="eilikrineia" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEI+AtmVkukMUf15nsAJaDE/LIilQoAE0rv6/5FXBBkL
+owner namespaces="eilikrineia" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPSkunKWvzze+BJ2ga2SOkUANOWWHR9kbzQHDUR3CI5x
