@@ -242,6 +242,25 @@ class GeneseDoDonoTest(Base):
         self.assertTrue(ek.verificar(self.raiz, privado=True)["ok"])
 
 
+class TestemunhaTest(Base):
+    def test_reescrever_trecho_nao_publicado_e_acusado_pela_testemunha(self):
+        testemunha = self.raiz.parent / (self.raiz.name + "-testemunha.json")  # fora do alcance do agente, na prática
+        self.reg(texto="primeira")
+        self.reg(texto="segunda, que eu gostaria de trocar")
+        r = ek.vigiar(self.raiz, testemunha)
+        self.assertEqual((r["novas_testemunhadas"], r["divergencias"]), (2, []))
+        # o agente apaga a última entrada (ainda não publicada) e registra outra no lugar
+        (self.raiz / "cadeia" / "000002.json").unlink()
+        (self.raiz / "privado" / "textos" / "000002.json").unlink()
+        self.reg(texto="segunda, reescrita")
+        self.assertTrue(ek.verificar(self.raiz, privado=True)["ok"])  # a cadeia sozinha não percebe
+        r = ek.vigiar(self.raiz, testemunha)
+        self.assertEqual([d["seq"] for d in r["divergencias"]], [2])  # a testemunha percebe
+        self.assertIsNotNone(r["alarme_registrado"])
+        self.assertEqual(ek.entradas(self.raiz)[-1]["tipo"], "auditoria")
+        testemunha.unlink()
+
+
 class AuditorTest(Base):
     def test_auditor_assina_veredito_e_encadeia(self):
         self.reg()

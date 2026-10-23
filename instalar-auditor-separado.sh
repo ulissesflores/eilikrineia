@@ -64,7 +64,9 @@ if ! grep -q "$NOVA" "$REPO/chaves/allowed_signers"; then   # rodar de novo não
   rm -f "$PUB"
   TROCOU=1
 fi
-if como_dono "$PY" "$REPO/eilikrineia.py" --raiz "$REPO" verificar | grep -q "diferente da última assinada pelo dono"; then
+# (o verificador sai com código 1 quando reprova; por isso o resultado é capturado antes do grep, e não num pipe)
+VERIF=$(como_dono "$PY" "$REPO/eilikrineia.py" --raiz "$REPO" verificar || true)
+if grep -q "diferente da última assinada pelo dono" <<<"$VERIF"; then
   echo "   A troca de chave precisa da SUA assinatura (vai pedir a senha da sua chave):"
   como_dono "$PY" "$REPO/eilikrineia.py" --raiz "$REPO" registrar --papel ulisses --tipo chaves \
     --texto "Troco a chave do auditor: a nova existe só na conta $AUD; a antiga, que o agente podia ler, vale só até agora." \
@@ -85,13 +87,21 @@ como_aud git config --global --add safe.directory "$REPO"
 como_aud git config --global user.name "Ulisses Flores"
 como_aud git config --global user.email "c.ulisses@gmail.com"
 como_dono git -C "$REPO" remote set-url origin git@github.com:ulissesflores/eilikrineia.git
+# push só por SSH com a chave de implantação: o formato ssh:// escapa da regra da conta do dono que troca git@ por https
+como_dono git -C "$REPO" config remote.origin.pushurl ssh://git@github.com/ulissesflores/eilikrineia.git
 
 echo "6/8 Grok na conta do auditor"
 install -d -o "$AUD" -m 755 "$CASA/.grok" "$CASA/.grok/bin"
-cp -R "/Users/$DONO/.grok/bin/." "$CASA/.grok/bin/"
+# o grok da conta do dono é um atalho para ../downloads/...; copia o programa de verdade (-L segue o atalho)
+rm -f "$CASA/.grok/bin/grok"
+cp -L "/Users/$DONO/.grok/bin/grok" "$CASA/.grok/bin/grok"
+chmod 755 "$CASA/.grok/bin/grok"
 chown -R "$AUD" "$CASA/.grok"
+como_aud "$CASA/.grok/bin/grok" --version >/dev/null 2>&1 || echo "   (aviso: o grok copiado não respondeu a --version)"
 
-echo "7/8 agendador de hora em hora (auditar + publicar), na conta do auditor"
+echo "7/8 agendador: a cada mudança na cadeia (e de hora em hora), na conta do auditor: testemunhar, auditar, publicar"
+LOG="$REPO/privado/auditorias/agendador.log"
+touch "$LOG"; chown "$AUD:$GRUPO" "$LOG"; chmod 664 "$LOG"
 cat > "$PLIST" <<PL
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -102,16 +112,19 @@ cat > "$PLIST" <<PL
   <key>EnvironmentVariables</key><dict>
     <key>EILIKRINEIA_CHAVE_AUDITOR</key><string>$CASA/.eilikrineia/auditor</string>
     <key>EILIKRINEIA_CHAVE_IMPLANTACAO</key><string>$CASA/.eilikrineia/implantacao</string>
+    <key>EILIKRINEIA_TESTEMUNHA</key><string>$CASA/.eilikrineia/testemunha.json</string>
     <key>HOME</key><string>$CASA</string>
     <key>PATH</key><string>$CASA/.grok/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
   </dict>
   <key>ProgramArguments</key><array>
     <string>/bin/bash</string><string>-c</string>
-    <string>$PY $REPO/eilikrineia.py auditar --auditor grok; $PY $REPO/eilikrineia.py publicar</string>
+    <string>date -u; $PY $REPO/eilikrineia.py vigiar; $PY $REPO/eilikrineia.py auditar --auditor grok; $PY $REPO/eilikrineia.py publicar</string>
   </array>
+  <key>WatchPaths</key><array><string>$REPO/cadeia</string></array>
   <key>StartInterval</key><integer>3600</integer>
-  <key>StandardOutPath</key><string>$CASA/.eilikrineia/agendador.log</string>
-  <key>StandardErrorPath</key><string>$CASA/.eilikrineia/agendador.log</string>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>$LOG</string>
+  <key>StandardErrorPath</key><string>$LOG</string>
 </dict></plist>
 PL
 chmod 644 "$PLIST"

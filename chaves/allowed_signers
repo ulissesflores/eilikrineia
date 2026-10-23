@@ -1,3 +1,4 @@
 claude namespaces="eilikrineia" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKS4A20s+FnI+iEFzlUIFCXvGTNRnj1KifPiG37JrVhd
-auditor namespaces="eilikrineia" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDkMiwcPUCJZ+bPPDpc5/W7CQ10u6vH05DRbWVJI+6Ve
+auditor namespaces="eilikrineia",valid-before="20261023194050Z" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDkMiwcPUCJZ+bPPDpc5/W7CQ10u6vH05DRbWVJI+6Ve
 ulisses namespaces="eilikrineia" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPSkunKWvzze+BJ2ga2SOkUANOWWHR9kbzQHDUR3CI5x
+auditor namespaces="eilikrineia",valid-after="20261023194050Z" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEI+AtmVkukMUf15nsAJaDE/LIilQoAE0rv6/5FXBBkL

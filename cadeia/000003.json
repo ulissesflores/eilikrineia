@@ -1,0 +1,16 @@
+{
+ "seq": 3,
+ "data": "2026-10-23T19:44:27Z",
+ "papel": "ulisses",
+ "tipo": "chaves",
+ "compromisso": "78b75eb018415a34ee0025264c1779a8b8533ebe803a93f0e335149cd253f8df",
+ "evidencias": [
+  "a025c5d98d6f882a6ed13eb66dd6d6fa49855d68bddd57440f21db160fc8e7ec"
+ ],
+ "corrige": null,
+ "audita": null,
+ "anterior": "240aba17e153caaced68b9874f8e7c4cc04b36deb12e1e9557517940fd6ec098",
+ "chaves_sha256": "a025c5d98d6f882a6ed13eb66dd6d6fa49855d68bddd57440f21db160fc8e7ec",
+ "hash": "23b7bcb80a282a47c7d571ddfac1cf43f29875b56b45aa23676a7a9c2cf09bbf",
+ "assinatura": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg9KS6cpa/PN74EnaBrZI6RQA05Z\nYdH2RvNAcNRHcIjnEAAAALZWlsaWtyaW5laWEAAAAAAAAABnNoYTUxMgAAAFMAAAALc3No\nLWVkMjU1MTkAAABA1U7Y0Nl3mOumHm/n4xlSEgoSGwEDrskKTCA21zDdG6O0iuSrrHsqGP\n55ehSSmqkPLitj3ZYHefYW/l6IKFCBBg==\n-----END SSH SIGNATURE-----\n"
+}

@@ -351,6 +351,38 @@ def rotacionar(papel, nova_publica, raiz=None, agora=None):
     return {"papel": papel, "trocada_em": agora}
 
 
+def vigiar(raiz=None, testemunha=None, agora=None):
+    """Testemunha do auditor: guarda, num arquivo que só a conta dele alcança, o hash de cada entrada já vista.
+    Se uma entrada já vista mudar ou sumir (reescrita do trecho ainda não publicado), registra o alarme como auditoria
+    assinada pelo auditor. Roda a cada mudança na pasta da cadeia (o agendador observa a pasta), então a janela em que
+    o agente poderia reescrever algo sem ser visto é de segundos, não de horas."""
+    t = Path(testemunha or os.environ.get("EILIKRINEIA_TESTEMUNHA", ""))
+    if not str(t) or str(t) == ".":
+        raise SystemExit("Informe o arquivo da testemunha (EILIKRINEIA_TESTEMUNHA).")
+    agora = agora or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    dados = json.loads(t.read_text(encoding="utf-8")) if t.exists() else {"vistas": [], "alarmes": []}
+    lista = entradas(raiz)
+    atuais = {e["seq"]: e["hash"] for e in lista}
+    divergencias = [w for w in dados["vistas"] if atuais.get(w["seq"]) != w["hash"]]
+    ja = {(w["seq"], w["hash"]) for w in dados["vistas"]}
+    novas = [{"seq": e["seq"], "hash": e["hash"], "visto_em": agora} for e in lista if (e["seq"], e["hash"]) not in ja]
+    dados["vistas"].extend(novas)
+    registro = None
+    if divergencias:
+        alarme = {"em": agora, "vistas_antes": divergencias,
+                  "agora": [{"seq": w["seq"], "hash": atuais.get(w["seq"])} for w in divergencias]}
+        dados["alarmes"].append(alarme)
+        arq = pastas(raiz)["auditorias"] / f"alarme-reescrita-{agora.replace(':', '')}.json"
+        arq.write_text(json.dumps(alarme, ensure_ascii=False, indent=1), encoding="utf-8")
+        registro = registrar("auditor", "auditoria", json.dumps(
+            {"audita_seq": lista[-1]["seq"], "veredito": "nao_sustentada",
+             "motivo": f"ALARME: {len(divergencias)} entrada(s) já testemunhada(s) mudaram ou sumiram (cadeia reescrita)"},
+            ensure_ascii=False), [arq], audita=lista[-1]["hash"], raiz=raiz)
+    t.parent.mkdir(parents=True, exist_ok=True)
+    t.write_text(json.dumps(dados, ensure_ascii=False, indent=1), encoding="utf-8")
+    return {"novas_testemunhadas": len(novas), "divergencias": divergencias, "alarme_registrado": registro}
+
+
 def revelar(seq, raiz=None):
     d = json.loads((pastas(raiz)["textos"] / f"{int(seq):06d}.json").read_text(encoding="utf-8"))
     return {"seq": d["seq"], "hash": d["hash"], "texto": d["texto"], "sal": d["sal"]}
@@ -574,6 +606,8 @@ def main(argv=None):
     sub.add_parser("carimbar")
     pb = sub.add_parser("publicar")
     pb.add_argument("--sem-push", action="store_true")
+    vg = sub.add_parser("vigiar")
+    vg.add_argument("--testemunha", type=Path)
     gn = sub.add_parser("genese")
     gn.add_argument("--texto")
     rt = sub.add_parser("rotacionar")
@@ -591,6 +625,8 @@ def main(argv=None):
         out = verificar(args.raiz, args.privado)
     elif args.cmd == "guardar":
         out = guardar(args.raiz)
+    elif args.cmd == "vigiar":
+        out = vigiar(args.raiz, args.testemunha)
     elif args.cmd == "genese":
         out = genese(args.raiz, args.texto)
     elif args.cmd == "rotacionar":
