@@ -2,3 +2,4 @@ privado/
 __pycache__/
 *.pyc
 .venv/
+historico/*/privado/

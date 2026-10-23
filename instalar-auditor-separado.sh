@@ -22,6 +22,7 @@ PLIST=/Library/LaunchDaemons/com.ulisses.eilikrineia.auditor.plist
 
 [ "$(id -u)" = 0 ] || { echo "Rode com sudo."; exit 1; }
 [ -f "$REPO/eilikrineia.py" ] || { echo "Repositório não encontrado em $REPO."; exit 1; }
+grep -q '"tipo": "genese"' "$REPO/cadeia/000001.json" 2>/dev/null || { echo "Rode antes a gênese: bash $REPO/gerar-genese.sh"; exit 1; }
 como_dono() { sudo -u "$DONO" -H "$@"; }
 como_aud() { sudo -u "$AUD" -H "$@"; }
 
@@ -56,6 +57,10 @@ install -d -o "$AUD" -m 700 "$CASA/.eilikrineia"
 PUB=$(mktemp); cp "$CASA/.eilikrineia/auditor.pub" "$PUB"; chmod 644 "$PUB"
 como_dono "$PY" "$REPO/eilikrineia.py" --raiz "$REPO" rotacionar auditor "$PUB"
 rm -f "$PUB"
+echo "   A troca de chave precisa da SUA assinatura (vai pedir a senha da sua chave):"
+como_dono "$PY" "$REPO/eilikrineia.py" --raiz "$REPO" registrar --papel ulisses --tipo chaves \
+  --texto "Troco a chave do auditor: a nova existe só na conta $AUD; a antiga, que o agente podia ler, vale só até agora." \
+  --evidencia "$REPO/chaves/allowed_signers"
 [ -f "$REPO/privado/chaves/auditor" ] && rm -P "$REPO/privado/chaves/auditor" "$REPO/privado/chaves/auditor.pub"
 
 echo "4/8 chave de implantação do GitHub (escrita só em ulissesflores/eilikrineia)"

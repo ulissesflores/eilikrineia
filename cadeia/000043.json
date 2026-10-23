@@ -1,0 +1,13 @@
+{
+ "seq": 43,
+ "data": "2026-10-23T19:27:49Z",
+ "papel": "claude",
+ "tipo": "opiniao",
+ "compromisso": "5dbe0a4a7e604c62027c3c43ccbd9fd4444cc9e7006d2656025ab969e2466b7d",
+ "evidencias": [],
+ "corrige": null,
+ "audita": null,
+ "anterior": "a263204834461ea0ad313928e01899a96a0469fc522e3aa10089a10e02498d47",
+ "hash": "4332803dce37fb8e33e4d40a618f4d53c967c68b45895aa54f67d244bc0b7f60",
+ "assinatura": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgpLgDbSz4Wcj6IQXOVQgUJe8ZM1\nGePUqJ8+IbfsmtWF0AAAALZWlsaWtyaW5laWEAAAAAAAAABnNoYTUxMgAAAFMAAAALc3No\nLWVkMjU1MTkAAABAd9cqAo6epts+aRFhfVcJQwhvYj8fqqgj8xklmQH4C3/jjqBU7qxozw\nYKAOqsDKuCSX7bjjdjL+4iSLLiWdywCw==\n-----END SSH SIGNATURE-----\n"
+}

@@ -29,9 +29,13 @@ RAIZ = Path(os.environ.get("EILIKRINEIA_RAIZ", Path(__file__).resolve().parent))
 GENESE = "0" * 64
 NAMESPACE = "eilikrineia"
 PAPEIS = ("claude", "auditor", "ulisses")
-TIPOS = ("fato-medido", "afirmacao", "decisao", "opiniao", "correcao", "rodada", "auditoria")
-EXIGE_EVIDENCIA = ("fato-medido", "afirmacao", "rodada", "auditoria")
+TIPOS = ("fato-medido", "afirmacao", "decisao", "opiniao", "correcao", "rodada", "auditoria", "genese", "chaves")
+EXIGE_EVIDENCIA = ("fato-medido", "afirmacao", "rodada", "auditoria", "genese", "chaves")
 CAMPOS_HASH = ("seq", "data", "papel", "tipo", "compromisso", "evidencias", "corrige", "audita", "anterior")
+# Campos que só existem em algumas entradas (gênese e troca de chaves). Entram no hash quando presentes, o que mantém
+# válidas as entradas antigas, que não os têm.
+CAMPOS_EXTRA = ("chaves_sha256", "antecessora")
+SO_DO_DONO = ("genese", "chaves", "decisao")
 
 
 def sha256_bytes(b):
@@ -55,7 +59,18 @@ def compromisso(sal, texto):
 
 
 def hash_entrada(e):
-    return sha256_bytes(canonico({k: e.get(k) for k in CAMPOS_HASH}))
+    base = {k: e.get(k) for k in CAMPOS_HASH}
+    base.update({k: e[k] for k in CAMPOS_EXTRA if k in e})
+    return sha256_bytes(canonico(base))
+
+
+def sha_chaves(raiz=None):
+    return sha256_arquivo(pastas(raiz)["chaves"] / "allowed_signers")
+
+
+def chaves_comprometidas(lista):
+    """Na cadeia com gênese do dono, a lista de chaves válida é a última que o DONO assinou (gênese ou 'chaves')."""
+    return next((e["chaves_sha256"] for e in reversed(lista) if e.get("tipo") in ("genese", "chaves")), None)
 
 
 def pastas(raiz=None):
@@ -155,7 +170,7 @@ def guardar_no_acervo(caminho, sha, raiz=None):
     return destino
 
 
-def registrar(papel, tipo, texto, evidencias=(), corrige=None, audita=None, raiz=None, agora=None):
+def registrar(papel, tipo, texto, evidencias=(), corrige=None, audita=None, raiz=None, agora=None, antecessora=None):
     if papel not in PAPEIS:
         raise SystemExit(f"Papel inválido: {papel}")
     if tipo not in TIPOS:
@@ -168,9 +183,13 @@ def registrar(papel, tipo, texto, evidencias=(), corrige=None, audita=None, raiz
         raise SystemExit("Correção exige --corrige <hash da entrada corrigida>.")
     if tipo == "auditoria" and (papel != "auditor" or not audita):
         raise SystemExit("Auditoria só pelo papel auditor e com --audita <hash>.")
-    if tipo == "decisao" and papel != "ulisses":
-        raise SystemExit("Decisão só pelo papel ulisses.")
+    if tipo in SO_DO_DONO and papel != "ulisses":
+        raise SystemExit(f"Tipo '{tipo}' só pelo papel ulisses (a chave do dono).")
     ant = entradas(raiz)
+    if tipo == "genese" and ant:
+        raise SystemExit("Gênese só numa cadeia vazia.")
+    if ant and ant[0].get("tipo") == "genese" and tipo not in ("chaves",) and chaves_comprometidas(ant) != sha_chaves(raiz):
+        raise SystemExit("A lista de chaves mudou depois da última assinatura do dono; ele precisa registrar 'chaves' antes.")
     hashes = {e["hash"] for e in ant}
     for alvo in (corrige, audita):
         if alvo and alvo not in hashes:
@@ -188,6 +207,10 @@ def registrar(papel, tipo, texto, evidencias=(), corrige=None, audita=None, raiz
          "papel": papel, "tipo": tipo, "compromisso": compromisso(sal, texto),
          "evidencias": [x["sha256"] for x in evid], "corrige": corrige, "audita": audita,
          "anterior": ant[-1]["hash"] if ant else GENESE}
+    if tipo in ("genese", "chaves"):
+        e["chaves_sha256"] = sha_chaves(raiz)
+    if tipo == "genese" and antecessora:
+        e["antecessora"] = antecessora
     e["hash"] = hash_entrada(e)
     e["assinatura"] = assinar(papel, e["hash"], raiz)
     p = pastas(raiz)
@@ -206,7 +229,17 @@ def verificar(raiz=None, privado=False):
     lista = entradas(raiz)
     p = pastas(raiz)
     corrigidas = {e.get("corrige") for e in lista if e.get("tipo") == "correcao"}
+    dono = bool(lista) and lista[0].get("tipo") == "genese"
+    if dono:
+        if lista[0].get("papel") != "ulisses":
+            problemas.append("#1: gênese não assinada pelo dono")
+        if chaves_comprometidas(lista) != sha_chaves(raiz):
+            problemas.append("lista de chaves (chaves/allowed_signers) diferente da última assinada pelo dono")
     for i, e in enumerate(lista, 1):
+        if e.get("tipo") in SO_DO_DONO and e.get("papel") != "ulisses":
+            problemas.append(f"#{e.get('seq')}: tipo {e.get('tipo')} assinado por quem não é o dono")
+        if e.get("tipo") == "genese" and i != 1:
+            problemas.append(f"#{e.get('seq')}: gênese fora da primeira posição")
         s = e.get("seq")
         if s != i:
             problemas.append(f"#{s}: sequência quebrada (esperado {i})")
@@ -245,7 +278,8 @@ def verificar(raiz=None, privado=False):
         vistos.add(e.get("hash"))
         anterior = e.get("hash")
     return {"ok": not problemas, "entradas": len(lista), "topo": anterior, "problemas": problemas,
-            "reconhecidos": reconhecidos, "avisos": avisos}
+            "reconhecidos": reconhecidos, "avisos": avisos,
+            "raiz_de_confianca": "gênese do dono" if dono else "SEM gênese do dono (cadeia de agente: pode ser refeita por quem tem as chaves)"}
 
 
 def guardar(raiz=None):
@@ -258,6 +292,46 @@ def guardar(raiz=None):
                 guardar_no_acervo(c, ev["sha256"], raiz)
                 feitos += 1
     return {"copiadas": feitos}
+
+
+def genese(raiz=None, texto=None):
+    """Começa a cadeia pela assinatura do DONO. Se já existe cadeia anterior (feita só com chaves de agente), ela é
+    verificada e arquivada inteira em historico/v<n>/, e a gênese se compromete com o topo dela ('antecessora').
+    A chave privada do dono (privado/chaves/ulisses) deve ter senha; a assinatura pede a senha a ele."""
+    r = Path(raiz or RAIZ)
+    p = pastas(r)
+    if not (p["chaves_priv"] / "ulisses").exists():
+        raise SystemExit("Falta a chave do dono: ssh-keygen -t ed25519 -C eilikrineia-ulisses -f privado/chaves/ulisses")
+    ant, antecessora = entradas(r), None
+    if ant:
+        if ant[0].get("tipo") == "genese":
+            raise SystemExit("Esta cadeia já começa com a gênese do dono.")
+        v = verificar(r, privado=True)
+        if not v["ok"]:
+            raise SystemExit("A cadeia anterior não verifica; nada arquivado: " + "; ".join(v["problemas"]))
+        n = 0
+        while (r / "historico" / f"v{n}").exists():
+            n += 1
+        h = r / "historico" / f"v{n}"
+        (h / "privado").mkdir(parents=True)
+        shutil.move(str(p["cadeia"]), str(h / "cadeia"))
+        shutil.copytree(p["chaves"], h / "chaves")
+        for k in ("textos", "auditorias"):
+            if p[k].exists():
+                shutil.move(str(p[k]), str(h / "privado" / k))
+        shutil.copytree(p["acervo"], h / "privado" / "acervo")  # cópia: o acervo novo continua com tudo
+        antecessora = {"versao": f"v{n}", "entradas": v["entradas"], "topo": v["topo"]}
+    iniciar(r)  # publica a chave do dono em allowed_signers (só acrescenta)
+    for k in ("cadeia", "textos", "auditorias"):
+        p[k].mkdir(parents=True, exist_ok=True)
+    texto = texto or ("Gênese do dono. Eu, Ulisses, começo esta cadeia com a minha chave. Valem as chaves públicas da lista "
+                      "comprometida aqui (sha256 no campo chaves_sha256); qualquer mudança nela exige nova entrada 'chaves' "
+                      "assinada por mim. O protocolo e o código vigentes são os das evidências."
+                      + (f" A cadeia anterior ({antecessora['versao']}, {antecessora['entradas']} entradas, topo "
+                         f"{antecessora['topo']}) fica arquivada em historico/ e é assumida por esta gênese." if antecessora else ""))
+    out = registrar("ulisses", "genese", texto, [p["chaves"] / "allowed_signers", r / "PROTOCOLO.md", r / "eilikrineia.py"],
+                    raiz=r, antecessora=antecessora)
+    return {**out, "antecessora": antecessora}
 
 
 def rotacionar(papel, nova_publica, raiz=None, agora=None):
@@ -394,7 +468,8 @@ def auditar(raiz=None, auditor="grok", limite=30000, chamar=chamar_auditor):
 
 # ---------- publicação (exceção nominal nº 3 do dono: commit e push sem OK por vez, só por aqui) ----------
 
-PUBLICAVEIS = ("README.md", "PROTOCOLO.md", "eilikrineia.py", "instalar-auditor-separado.sh", ".gitignore", "tests", "cadeia", "chaves", "tempo")
+PUBLICAVEIS = ("README.md", "PROTOCOLO.md", "eilikrineia.py", "instalar-auditor-separado.sh", "gerar-genese.sh", ".gitignore",
+               "tests", "cadeia", "chaves", "tempo", "historico")
 PROIBIDO_NO_CONTEUDO = ("PRIVATE KEY", "BEGIN OPENSSH", "privado/textos", "privado/acervo")
 
 
@@ -440,7 +515,8 @@ def publicar(raiz=None, push=True):
     subprocess.run(git + ["add", "--", *[p for p in PUBLICAVEIS if (r / p).exists()]], check=True)
     nomes = subprocess.run(git + ["diff", "--cached", "--name-only"], capture_output=True, text=True, check=True).stdout.split()
     rastreados = subprocess.run(git + ["ls-files"], capture_output=True, text=True, check=True).stdout.split()
-    ruins = [n for n in set(nomes + rastreados) if n.startswith(("privado/", ".venv/")) or not n.startswith(PUBLICAVEIS)]
+    ruins = [n for n in set(nomes + rastreados) if n.startswith(("privado/", ".venv/")) or "/privado/" in n
+                 or not n.startswith(PUBLICAVEIS)]
     for n in nomes:
         f = r / n
         if f.is_file() and any(x in f.read_text(encoding="utf-8", errors="replace") for x in PROIBIDO_NO_CONTEUDO) \
@@ -498,6 +574,8 @@ def main(argv=None):
     sub.add_parser("carimbar")
     pb = sub.add_parser("publicar")
     pb.add_argument("--sem-push", action="store_true")
+    gn = sub.add_parser("genese")
+    gn.add_argument("--texto")
     rt = sub.add_parser("rotacionar")
     rt.add_argument("papel", choices=PAPEIS)
     rt.add_argument("nova_publica", type=Path)
@@ -513,6 +591,8 @@ def main(argv=None):
         out = verificar(args.raiz, args.privado)
     elif args.cmd == "guardar":
         out = guardar(args.raiz)
+    elif args.cmd == "genese":
+        out = genese(args.raiz, args.texto)
     elif args.cmd == "rotacionar":
         out = rotacionar(args.papel, args.nova_publica, args.raiz)
     elif args.cmd == "carimbar":

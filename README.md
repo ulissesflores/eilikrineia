@@ -108,6 +108,22 @@ privado/         NUNCA publicado: textos, sais, caminhos de evidência, chaves p
   [Perseus](https://cts.perseids.org/read/greekLit/tlg0059/tlg004/perseus-eng2/65-66).
 - OpenTimestamps: [opentimestamps.org](https://opentimestamps.org/), [anúncio de Peter Todd](https://petertodd.org/2016/opentimestamps-announcement).
 
+## A raiz de confiança é do dono
+
+Uma cadeia assinada só por chaves de agente pode ser refeita do zero por quem tem acesso às chaves. Por isso a cadeia
+começa pela **gênese do dono**: a primeira entrada é assinada pela chave da pessoa, protegida por uma senha que o
+agente nunca vê, e se compromete com a lista de chaves válidas. Qualquer mudança nessa lista (entrada `chaves`) também
+exige a assinatura dela; o verificador reprova uma lista diferente da última assinada.
+
+Duas coisas tornam a gênese impossível de falsificar depois:
+
+- a **impressão digital da chave do dono**, guardada por ele fora da máquina;
+- o **carimbo no Bitcoin** e o **arquivamento no Software Heritage** logo após a gênese: uma gênese refeita depois
+  teria data posterior.
+
+A cadeia anterior à gênese, feita só com chaves de agente, fica inteira em `historico/v0/` e a gênese se compromete
+com o topo dela (campo `antecessora`). O verificador diz qual é a raiz de confiança de cada cadeia.
+
 ## Estado
 
 - Cadeia, verificador e auditor funcionando desde 2026-10-23. O auditor é um modelo de outro fornecedor, chamado pela

@@ -22,6 +22,8 @@ viola as regras mecânicas; o auditor julga o resto.
 | `correcao` | o agente mudou de posição ou errou | aponta o hash da entrada corrigida; a antiga fica |
 | `rodada` | uma execução de trabalho (entradas, saídas, provas) | obrigatória: os arquivos da execução |
 | `auditoria` | veredito do auditor sobre uma entrada | obrigatória: a resposta bruta do auditor |
+| `genese` | primeira entrada; só o dono; fixa a lista de chaves válidas e assume a cadeia anterior | lista de chaves, protocolo, código |
+| `chaves` | o dono troca ou acrescenta uma chave; só o dono | a lista de chaves nova |
 
 ## Regras
 
@@ -37,6 +39,8 @@ viola as regras mecânicas; o auditor julga o resto.
 8. Evidência pequena e específica, extraída por comando, com o comando escrito no topo do arquivo. O auditor vê só o
    começo e o fim de arquivos grandes.
 9. O que o agente disse antes só vira evidência com o trecho literal da conversa (transcript), nunca de memória.
+10. A raiz de confiança é do dono: a cadeia começa pela gênese assinada pela chave dele (com senha), e a lista de
+    chaves só muda com entrada `chaves` assinada por ele. Agente não tem como assinar nenhuma das duas.
 
 ## Comandos
 
@@ -46,4 +50,6 @@ python3 eilikrineia.py registrar --papel claude --tipo correcao --texto "..." --
 python3 eilikrineia.py verificar --privado
 python3 eilikrineia.py auditar --auditor grok
 python3 eilikrineia.py revelar <seq>
+bash gerar-genese.sh                      # o dono, no Terminal dele: cria a chave com senha e assina a gênese
+sudo bash instalar-auditor-separado.sh    # o dono: auditor em conta separada, com troca de chave assinada por ele
 ```

@@ -174,6 +174,74 @@ class IniciarDeNovoTest(Base):
         self.assertFalse((self.raiz / "privado" / "chaves" / "auditor").exists())  # não recriou
 
 
+class GeneseDoDonoTest(Base):
+    SENHA = "senha-so-do-dono"
+
+    def setUp(self):
+        super().setUp()
+        import os, subprocess
+        (self.raiz / "PROTOCOLO.md").write_text("protocolo\n", encoding="utf-8")
+        (self.raiz / "eilikrineia.py").write_text("codigo\n", encoding="utf-8")
+        chave = self.raiz / "privado" / "chaves" / "ulisses"
+        subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", self.SENHA, "-f", str(chave)], check=True)
+        askpass = self.raiz / "askpass.sh"  # simula o dono digitando a senha
+        askpass.write_text(f"#!/bin/sh\necho {self.SENHA}\n")
+        askpass.chmod(0o755)
+        self._env = {k: os.environ.get(k) for k in ("SSH_ASKPASS", "SSH_ASKPASS_REQUIRE", "DISPLAY")}
+        os.environ.update(SSH_ASKPASS=str(askpass), SSH_ASKPASS_REQUIRE="force", DISPLAY=":0")
+
+    def tearDown(self):
+        import os
+        for k, v in self._env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        super().tearDown()
+
+    def test_genese_assume_a_cadeia_antiga_e_vira_raiz(self):
+        self.reg(texto="antes da gênese")
+        topo_antigo = ek.entradas(self.raiz)[-1]["hash"]
+        g = ek.genese(self.raiz)
+        self.assertEqual(g["seq"], 1)
+        self.assertEqual(g["antecessora"]["topo"], topo_antigo)
+        e1 = ek.entradas(self.raiz)[0]
+        self.assertEqual((e1["tipo"], e1["papel"]), ("genese", "ulisses"))
+        v = ek.verificar(self.raiz, privado=True)
+        self.assertTrue(v["ok"], v["problemas"])
+        self.assertEqual(v["raiz_de_confianca"], "gênese do dono")
+        velho = ek.verificar(self.raiz / "historico" / "v0", privado=True)
+        self.assertTrue(velho["ok"], velho["problemas"])
+        self.assertEqual(velho["topo"], topo_antigo)
+        self.reg(texto="depois da gênese")
+        self.assertTrue(ek.verificar(self.raiz, privado=True)["ok"])
+
+    def test_agente_nao_assina_genese_nem_troca_chave_sem_o_dono(self):
+        import subprocess
+        with self.assertRaises(SystemExit):
+            ek.registrar("claude", "genese", "falsa", [self.ev], raiz=self.raiz)
+        ek.genese(self.raiz)
+        intrusa = self.raiz / "intrusa"
+        subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(intrusa)], check=True)
+        lista = self.raiz / "chaves" / "allowed_signers"
+        pub = Path(str(intrusa) + ".pub").read_text().split()
+        lista.write_text(lista.read_text() + f'ulisses namespaces="eilikrineia" {pub[0]} {pub[1]}\n')
+        v = ek.verificar(self.raiz)
+        self.assertTrue(any("diferente da última assinada pelo dono" in p for p in v["problemas"]))
+        with self.assertRaises(SystemExit):
+            self.reg(texto="tentativa depois de mexer na lista")
+
+    def test_troca_de_chave_assinada_pelo_dono_vale(self):
+        import subprocess
+        ek.genese(self.raiz)
+        nova = self.raiz / "nova_auditor"
+        subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(nova)], check=True)
+        ek.rotacionar("auditor", Path(str(nova) + ".pub"), self.raiz)
+        ek.registrar("ulisses", "chaves", "troca da chave do auditor", [self.raiz / "chaves" / "allowed_signers"], raiz=self.raiz)
+        self.reg(texto="segue normal")
+        self.assertTrue(ek.verificar(self.raiz, privado=True)["ok"])
+
+
 class AuditorTest(Base):
     def test_auditor_assina_veredito_e_encadeia(self):
         self.reg()
