@@ -1,0 +1,15 @@
+{
+ "seq": 35,
+ "data": "2026-10-23T19:22:09Z",
+ "papel": "claude",
+ "tipo": "fato-medido",
+ "compromisso": "b7fefe806c6474a50a7a845457783f17174e6c13807ff2418d66a414f7e2a1c1",
+ "evidencias": [
+  "b8d5a449dc59fe6d886eb82c743296b54a6e4ee4d0fc91049c843eaf08725a33"
+ ],
+ "corrige": null,
+ "audita": null,
+ "anterior": "652f42709e2227efb35bad0186b47dfd3b31a9062ebc790cbf024784782d44ab",
+ "hash": "698ba0be27edc90b8268350677d1ab2846f7c58c6fe6ec03f3c5bde3db9ddb1f",
+ "assinatura": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgpLgDbSz4Wcj6IQXOVQgUJe8ZM1\nGePUqJ8+IbfsmtWF0AAAALZWlsaWtyaW5laWEAAAAAAAAABnNoYTUxMgAAAFMAAAALc3No\nLWVkMjU1MTkAAABA2tQMyY9Koay0Oc5UXrBw9zTJbH2AkuwC1Wh+1sq6niKdCvIAQaN/yi\nwuq15atRDp5ugzTQzkU+UwIgawznGUBg==\n-----END SSH SIGNATURE-----\n"
+}

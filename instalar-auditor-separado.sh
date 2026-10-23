@@ -38,6 +38,7 @@ dseditgroup -o edit -a "$DONO" -t user "$GRUPO"
 dseditgroup -o edit -a "$AUD" -t user "$GRUPO"
 
 echo "2/8 permissões compartilhadas (cadeia, carimbos, textos, acervo; NUNCA privado/chaves)"
+como_dono git -C "$REPO" config core.sharedRepository group   # git passa a criar arquivos graváveis pelo grupo
 chgrp "$GRUPO" "$REPO" "$REPO/privado"
 chmod 750 "$REPO/privado"
 for d in cadeia chaves tempo .git privado/textos privado/acervo privado/auditorias privado/evidencias; do

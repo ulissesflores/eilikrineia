@@ -158,6 +158,22 @@ class RotacaoTest(Base):
         self.assertTrue(any("retroativa" in p for p in ek.verificar(self.raiz)["problemas"]))
 
 
+class IniciarDeNovoTest(Base):
+    def test_iniciar_de_novo_so_acrescenta_e_nao_recria_chave(self):
+        import subprocess
+        nova = self.raiz / "nova_auditor"
+        subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(nova)], check=True)
+        ek.rotacionar("auditor", Path(str(nova) + ".pub"), self.raiz, agora="20261023120000Z")
+        (self.raiz / "privado" / "chaves" / "auditor").unlink()  # como o instalador faz
+        antes = (self.raiz / "chaves" / "allowed_signers").read_text()
+        subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(self.raiz / "privado" / "chaves" / "ulisses")], check=True)
+        r = ek.iniciar(self.raiz)
+        depois = (self.raiz / "chaves" / "allowed_signers").read_text()
+        self.assertEqual(r["acrescentados"], ["ulisses"])
+        self.assertTrue(depois.startswith(antes))  # nada reescrito
+        self.assertFalse((self.raiz / "privado" / "chaves" / "auditor").exists())  # não recriou
+
+
 class AuditorTest(Base):
     def test_auditor_assina_veredito_e_encadeia(self):
         self.reg()

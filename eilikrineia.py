@@ -112,14 +112,23 @@ def assinatura_valida(papel, mensagem, assinatura, raiz=None, quando=None):
 # ---------- comandos ----------
 
 def iniciar(raiz=None, papeis=("claude", "auditor")):
-    """Cria as chaves dos agentes. A chave 'ulisses' NÃO é criada aqui: ele gera a dele, com senha
-    (ssh-keygen -t ed25519 -f privado/chaves/ulisses), e roda `iniciar` de novo para publicá-la."""
+    """Primeira vez: cria as chaves dos agentes e a lista de chaves públicas. Depois: SÓ ACRESCENTA papel que ainda não
+    está na lista (ex.: o dono publica a dele, gerada com senha em privado/chaves/ulisses). Nunca reescreve linha
+    existente (perderia a troca de chave com prazo) nem recria a chave de um papel já publicado."""
     p = pastas(raiz)
+    primeira_vez = not p["privado"].exists()
     for k in ("cadeia", "chaves", "chaves_priv", "textos", "auditorias", "acervo"):
         p[k].mkdir(parents=True, exist_ok=True)
-    os.chmod(p["privado"], 0o700)
-    linhas = []
+    if primeira_vez:  # depois, o instalador do auditor abre privado/ para o grupo; não fechar de novo
+        os.chmod(p["privado"], 0o700)
+        os.chmod(p["chaves_priv"], 0o700)
+    lista = p["chaves"] / "allowed_signers"
+    existentes = lista.read_text(encoding="utf-8").splitlines() if lista.exists() else []
+    publicados = {l.split()[0] for l in existentes if l.strip()}
+    novas = []
     for papel in PAPEIS:
+        if papel in publicados:
+            continue
         chave = p["chaves_priv"] / papel
         if papel not in papeis and not chave.exists():
             continue
@@ -129,10 +138,11 @@ def iniciar(raiz=None, papeis=("claude", "auditor")):
             if r.returncode:
                 raise SystemExit("ssh-keygen falhou: " + r.stderr)
         pub = (p["chaves_priv"] / f"{papel}.pub").read_text().split()
-        linhas.append(f'{papel} namespaces="{NAMESPACE}" {pub[0]} {pub[1]}')
-    (p["chaves"] / "allowed_signers").write_text("\n".join(linhas) + "\n", encoding="utf-8")
-    return {"chaves_publicas": str(p["chaves"] / "allowed_signers"), "papeis": [l.split()[0] for l in linhas]}
-
+        novas.append(f'{papel} namespaces="{NAMESPACE}" {pub[0]} {pub[1]}')
+    if novas:
+        lista.write_text("\n".join(existentes + novas) + "\n", encoding="utf-8")
+    return {"chaves_publicas": str(lista), "acrescentados": [l.split()[0] for l in novas],
+            "papeis": sorted(publicados | {l.split()[0] for l in novas})}
 
 def guardar_no_acervo(caminho, sha, raiz=None):
     """Cópia imutável da evidência, endereçada pelo próprio hash. O arquivo original pode mudar depois (código,
