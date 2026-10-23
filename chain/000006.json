@@ -1,0 +1,14 @@
+{
+ "seq": 6,
+ "time": "2026-10-23T20:26:51Z",
+ "role": "auditor",
+ "type": "audit",
+ "commitment": "de2915aa2fec29f13340d84a05322360e75b914c78da3d857f34400dcf4d468f",
+ "attachments": [
+  "b92a6335e019294f377fd5e83e403b0645669cfe260ccabe8f1a40fc4e2bb736"
+ ],
+ "prev": "011b26da5ddb7f53f33506a725d21a6a78c6ef93f9545ca9c2118b99a1e897e6",
+ "audits": "a9da97a8024c7c04945bfbd5d1173c5947267075f37c28a02acc7790821a708e",
+ "hash": "eb54274f5f511de24631eeae33ef388be4f67732a7343e34ce86879b7e70fb07",
+ "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQj4C2ZWS6QxR/XmewAloMT8siK\nVCgATSu/r/kVcEGQsAAAALZWlsaWtyaW5laWEAAAAAAAAABnNoYTUxMgAAAFMAAAALc3No\nLWVkMjU1MTkAAABAZ7MkcE22L8/QOkb49uj6pFe3e/pD8vubB+bZAAzurOEooKHiwJ6UoR\nnPpgI51JcVqDBD+UJtPaTP4OM5af7hDg==\n-----END SSH SIGNATURE-----\n"
+}
