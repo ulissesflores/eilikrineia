@@ -269,6 +269,11 @@ class AuditorTest(Base):
         r = ek.auditar(self.raiz, chamar=lambda p, a: self.fail("não deveria chamar o modelo"))
         self.assertFalse(r["mecanica"]["ok"])
 
+    def test_opiniao_nao_vai_ao_auditor(self):
+        self.reg(tipo="opiniao", texto="acho que vai melhorar", evidencias=[])
+        r = ek.auditar(self.raiz, chamar=lambda p, a: self.fail("opinião não deveria ser julgada como fato"))
+        self.assertEqual(r["auditorias"], [])
+
     def test_extrair_veredito_de_envelopes(self):
         self.assertEqual(ek.extrair_veredito('{"structured_output": {"veredito": "parcial", "motivo": "x"}}')["veredito"], "parcial")
         self.assertEqual(ek.extrair_veredito('texto antes {"veredito": "nao_sustentada", "motivo": "y"} depois')["veredito"],

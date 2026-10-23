@@ -445,7 +445,7 @@ def auditar(raiz=None, auditor="grok", limite=30000, chamar=chamar_auditor):
                       [arq], audita=lista[-1]["hash"], raiz=raiz)
         return {"mecanica": mec, "auditorias": [r]}
     for e in lista:
-        if e["tipo"] == "auditoria" or e["hash"] in auditadas:
+        if e["tipo"] in ("auditoria", "opiniao") or e["hash"] in auditadas:  # opinião não é afirmação de fato
             continue
         d = json.loads((p["textos"] / f"{e['seq']:06d}.json").read_text(encoding="utf-8"))
         def fonte(x):  # o auditor lê a cópia imutável quando existe
