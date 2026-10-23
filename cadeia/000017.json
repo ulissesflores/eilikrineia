@@ -1,0 +1,16 @@
+{
+ "seq": 17,
+ "data": "2026-10-23T18:45:35Z",
+ "papel": "claude",
+ "tipo": "correcao",
+ "compromisso": "5b044c2ab434b3994db26d85127f187386d13ec4fd6709202a4d2f6623a33386",
+ "evidencias": [
+  "b1466f78ca8dc31429e4988ecbff724e75daef52cf1d48dbfc4450c282d92e1b",
+  "515179b4d2deb9c4cce042a493f12bce11f7fd5a3848c9e48ca4f36afecf4748"
+ ],
+ "corrige": "00bfd2570860bb07b85fb01804397057d9503dfe75303d37f4463ef7f8fd0c45",
+ "audita": null,
+ "anterior": "7648bffdf0c6c36d49487031ced4078c0043b1444c8e326e76128e5070ba585b",
+ "hash": "84c68d127e68ab304bac823bfeb1eb2c306dc245c6e7da6594a98785208f2e7e",
+ "assinatura": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgpLgDbSz4Wcj6IQXOVQgUJe8ZM1\nGePUqJ8+IbfsmtWF0AAAALZWlsaWtyaW5laWEAAAAAAAAABnNoYTUxMgAAAFMAAAALc3No\nLWVkMjU1MTkAAABAfGl+AYEShgjo+Z/TOYKFiOCq1dDLtWG15xM97S0+YnqMk/pshLzIEq\nZFcLJWXl/+6ono17hxovxdO6+F7UzdCg==\n-----END SSH SIGNATURE-----\n"
+}

@@ -1,0 +1,15 @@
+{
+ "seq": 20,
+ "data": "2026-10-23T18:45:36Z",
+ "papel": "auditor",
+ "tipo": "auditoria",
+ "compromisso": "2ed6ad8afac3e8551629ba3d5f99e0b5c67b88b7cad0ad702438cce8d660d738",
+ "evidencias": [
+  "569fa09e9f439ca8fb5d06888057f898866e1f06aaa0b8a697697a909d7be457"
+ ],
+ "corrige": null,
+ "audita": "217ea773ab68cf2fe395d271495fe8ceadc0491f341a963bfa5fdc1d5cd96327",
+ "anterior": "217ea773ab68cf2fe395d271495fe8ceadc0491f341a963bfa5fdc1d5cd96327",
+ "hash": "efe15008e6d09ab3893dec2fb1f4eec199ae0a6fad0db52b8c1d22b37b748b89",
+ "assinatura": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgOQyLBw9QIln5s88Olzn9bsJDXS\n7q8fTkNFtZUkj7pV4AAAALZWlsaWtyaW5laWEAAAAAAAAABnNoYTUxMgAAAFMAAAALc3No\nLWVkMjU1MTkAAABAb5irkKERuGRibLhojo4PvfnKGr3vm3MS1qs6+HwxKZsjMjnraQr9+G\nIBc6SXkGT6zqfBT9XuHyeHp1RMLkdHBg==\n-----END SSH SIGNATURE-----\n"
+}
