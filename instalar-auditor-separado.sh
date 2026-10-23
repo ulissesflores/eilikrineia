@@ -35,8 +35,8 @@ if ! id "$AUD" >/dev/null 2>&1; then
   dscl . create "/Users/$AUD" IsHidden 1
   umask 077; printf '%s\n' "$SENHA" > /var/root/eilikrineia-auditor.senha
 fi
-dseditgroup -o edit -a "$DONO" -t user "$GRUPO"
-dseditgroup -o edit -a "$AUD" -t user "$GRUPO"
+dseditgroup -o edit -a "$DONO" -t user "$GRUPO" 2>/dev/null || true   # já membro: segue
+dseditgroup -o edit -a "$AUD" -t user "$GRUPO" 2>/dev/null || true
 
 echo "2/8 permissões compartilhadas (cadeia, carimbos, textos, acervo; NUNCA privado/chaves)"
 como_dono git -C "$REPO" config core.sharedRepository group   # git passa a criar arquivos graváveis pelo grupo
@@ -52,21 +52,30 @@ chmod 700 "$REPO/privado/chaves"
 como_aud test -r "$REPO/eilikrineia.py" || { echo "A conta do auditor não consegue ler $REPO."; exit 1; }
 
 echo "3/8 chave nova do auditor, só na conta dele, e aposentadoria da antiga"
+# Cópias temporárias ficam em privado/ (sua pasta): a pasta temporária do sudo é do administrador e a sua conta não lê.
+copia_publica() { local destino="$REPO/privado/.temp-$1.pub"; cp "$2" "$destino"; chown "$DONO" "$destino"; chmod 644 "$destino"; echo "$destino"; }
 install -d -o "$AUD" -m 700 "$CASA/.eilikrineia"
 [ -f "$CASA/.eilikrineia/auditor" ] || como_aud ssh-keygen -q -t ed25519 -N "" -C eilikrineia-auditor-separado -f "$CASA/.eilikrineia/auditor"
-PUB=$(mktemp); cp "$CASA/.eilikrineia/auditor.pub" "$PUB"; chmod 644 "$PUB"
-como_dono "$PY" "$REPO/eilikrineia.py" --raiz "$REPO" rotacionar auditor "$PUB"
-rm -f "$PUB"
-echo "   A troca de chave precisa da SUA assinatura (vai pedir a senha da sua chave):"
-como_dono "$PY" "$REPO/eilikrineia.py" --raiz "$REPO" registrar --papel ulisses --tipo chaves \
-  --texto "Troco a chave do auditor: a nova existe só na conta $AUD; a antiga, que o agente podia ler, vale só até agora." \
-  --evidencia "$REPO/chaves/allowed_signers"
-[ -f "$REPO/privado/chaves/auditor" ] && rm -P "$REPO/privado/chaves/auditor" "$REPO/privado/chaves/auditor.pub"
+NOVA=$(awk '{print $2}' "$CASA/.eilikrineia/auditor.pub")
+TROCOU=0
+if ! grep -q "$NOVA" "$REPO/chaves/allowed_signers"; then   # rodar de novo não duplica a troca
+  PUB=$(copia_publica auditor "$CASA/.eilikrineia/auditor.pub")
+  como_dono "$PY" "$REPO/eilikrineia.py" --raiz "$REPO" rotacionar auditor "$PUB"
+  rm -f "$PUB"
+  TROCOU=1
+fi
+if como_dono "$PY" "$REPO/eilikrineia.py" --raiz "$REPO" verificar | grep -q "diferente da última assinada pelo dono"; then
+  echo "   A troca de chave precisa da SUA assinatura (vai pedir a senha da sua chave):"
+  como_dono "$PY" "$REPO/eilikrineia.py" --raiz "$REPO" registrar --papel ulisses --tipo chaves \
+    --texto "Troco a chave do auditor: a nova existe só na conta $AUD; a antiga, que o agente podia ler, vale só até agora." \
+    --evidencia "$REPO/chaves/allowed_signers"
+fi
+if [ -f "$REPO/privado/chaves/auditor" ]; then rm -P "$REPO/privado/chaves/auditor" "$REPO/privado/chaves/auditor.pub"; fi
 
 echo "4/8 chave de implantação do GitHub (escrita só em ulissesflores/eilikrineia)"
 [ -f "$CASA/.eilikrineia/implantacao" ] || como_aud ssh-keygen -q -t ed25519 -N "" -C eilikrineia-implantacao -f "$CASA/.eilikrineia/implantacao"
-PUB=$(mktemp); cp "$CASA/.eilikrineia/implantacao.pub" "$PUB"; chmod 644 "$PUB"
-como_dono "$GH" repo deploy-key add "$PUB" --repo ulissesflores/eilikrineia --allow-write --title "auditor eilikrineia (conta separada)" || echo "   (chave de implantação já cadastrada?)"
+PUB=$(copia_publica implantacao "$CASA/.eilikrineia/implantacao.pub")
+como_dono "$GH" repo deploy-key add "$PUB" --repo ulissesflores/eilikrineia --allow-write --title "auditor eilikrineia (conta separada)" || echo "   (chave de implantação já cadastrada)"
 rm -f "$PUB"
 
 echo "5/8 git na conta do auditor e remoto por SSH"
@@ -110,7 +119,7 @@ launchctl bootout system "$PLIST" 2>/dev/null || true
 launchctl bootstrap system "$PLIST"
 
 echo "8/8 registro na cadeia"
-como_dono "$PY" "$REPO/eilikrineia.py" --raiz "$REPO" registrar --papel claude --tipo fato-medido \
+[ "$TROCOU" = 1 ] && como_dono "$PY" "$REPO/eilikrineia.py" --raiz "$REPO" registrar --papel claude --tipo fato-medido \
   --texto "Auditor separado instalado: chave nova só na conta $AUD; a chave antiga do auditor, que o agente podia ler, foi aposentada (valid-before) e apagada; vereditos anteriores a esta entrada foram assinados com ela." \
   --evidencia "$REPO/chaves/allowed_signers"
 
