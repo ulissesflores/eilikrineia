@@ -14,6 +14,8 @@ timestamp = ["opentimestamps-client>=0.7"]
 
 [tool.ruff]
 line-length = 120
+# history/ holds the frozen v1 script: its exact bytes are evidence, never reformat it
+extend-exclude = ["history"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "D"]
