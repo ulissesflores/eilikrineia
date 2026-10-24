@@ -1,0 +1,13 @@
+{
+ "seq": 31,
+ "time": "2026-10-24T21:53:27Z",
+ "role": "auditor",
+ "type": "checkpoint",
+ "commitment": "145b873a1553d3d5dfe4ef7e1a54a583165f87eb1676e0f89792778f06e7be1e",
+ "attachments": [
+  "459a443d8153c534a08e4ac7a9b0bfa0ae749df7b3a655a11d153e5748331cd0"
+ ],
+ "prev": "4c4477fc7336ca2c59a354acff179e511ba7dd707cadd398893cb9f07d7c1828",
+ "hash": "0125336d760b63657349df25f630aa11b0f625a5a5a7894d32fb69f32fdb8173",
+ "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQj4C2ZWS6QxR/XmewAloMT8siK\nVCgATSu/r/kVcEGQsAAAALZWlsaWtyaW5laWEAAAAAAAAABnNoYTUxMgAAAFMAAAALc3No\nLWVkMjU1MTkAAABAI8mR+aNZVgE9wktutJMXGf4CbymkS+tV90u2fJH/emejkAXkMQjlsB\nHeQGHpxA6bW9B82SPAUpXqz5iI700nBw==\n-----END SSH SIGNATURE-----\n"
+}
