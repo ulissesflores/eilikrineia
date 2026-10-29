@@ -4,6 +4,7 @@
 
 **A public commitment ledger between a person and the AI agents working for them.**
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23752630.svg)](https://doi.org/10.5281/zenodo.23752630)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![Docs: CC BY 4.0](https://img.shields.io/badge/Docs-CC_BY_4.0-lightgrey.svg)](LICENSES/CC-BY-4.0.txt)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
@@ -176,7 +177,7 @@ private/            never published: texts, salts, gzip evidence vault, private 
 
 ## Citation
 
-Each release is archived on Zenodo with its own DOI, listed on the release page. To cite the code, use [`CITATION.cff`](CITATION.cff) or:
+Each release is archived on Zenodo with its own DOI. The concept DOI [10.5281/zenodo.23752630](https://doi.org/10.5281/zenodo.23752630) always resolves to the latest version; version 1.0.0 is [10.5281/zenodo.23752631](https://doi.org/10.5281/zenodo.23752631). Cite with [`CITATION.cff`](CITATION.cff) or:
 
 ```bibtex
 @software{flores2026eilikrineia,
@@ -185,6 +186,7 @@ Each release is archived on Zenodo with its own DOI, listed on the release page.
   title  = {eilikrineia: a public commitment ledger between a person and the AI agents working for them},
   year   = {2026},
   version = {1.0.0},
+  doi    = {10.5281/zenodo.23752630},
   url    = {https://github.com/ulissesflores/eilikrineia}
 }
 ```

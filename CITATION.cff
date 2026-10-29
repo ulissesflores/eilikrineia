@@ -14,6 +14,11 @@ abstract: >-
 type: software
 version: "1.0.0"
 date-released: "2026-10-29"
+doi: "10.5281/zenodo.23752630"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.23752631"
+    description: "Version 1.0.0"
 repository-code: "https://github.com/ulissesflores/eilikrineia"
 url: "https://github.com/ulissesflores/eilikrineia"
 authors:
