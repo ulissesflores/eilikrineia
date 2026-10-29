@@ -1,0 +1,11 @@
+{
+ "seq": 59,
+ "time": "2026-10-29T02:50:02Z",
+ "role": "agent",
+ "type": "opinion",
+ "commitment": "55c664ba3d594c44b60aed6001c900469cc25b6ba9aac6bb285228f1ea3730b6",
+ "attachments": [],
+ "prev": "e6538e598cddeb02aea4105d771e441857f1eb061ebcf79b5d866f6ebf1c1f98",
+ "hash": "011e6025ab433d1088e124ae5e3f252381a1ec08326251b5efc9f92792921580",
+ "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBjBfPvFqwoMWTWe8ORlSkAfHP5\n6yf6IEC0bqWDqxS38AAAALZWlsaWtyaW5laWEAAAAAAAAABnNoYTUxMgAAAFMAAAALc3No\nLWVkMjU1MTkAAABAn4KIWvZ4yvYvbzy7sGH3qZzutILcVCnD3kZp4oKM8gX0n0bSiaRjsS\nGsYLmsTteJLzbVMGJZlcPyMEMpJXWsDQ==\n-----END SSH SIGNATURE-----\n"
+}
