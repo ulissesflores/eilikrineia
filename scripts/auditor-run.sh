@@ -11,6 +11,10 @@ PIN="$HOME/.eilikrineia/eilikrineia.py"
 PY="${EILIKRINEIA_PYTHON:-python3}"
 date -u
 
+# The witness runs first, with the code already pinned: if someone forged or cut the chain, that becomes a signed
+# alarm before anything else, and pinned-ok below then refuses to adopt code from the altered chain.
+"$PY" "$PIN" --root "$EILIKRINEIA_REPO" witness
+
 if ! cmp -s "$EILIKRINEIA_REPO/eilikrineia.py" "$PIN"; then
   if "$PY" "$PIN" --root "$EILIKRINEIA_REPO" pinned-ok "$EILIKRINEIA_REPO/eilikrineia.py" | grep -q '"ok": true'; then
     cp "$EILIKRINEIA_REPO/eilikrineia.py" "$PIN"
@@ -24,6 +28,5 @@ if ! "$PY" "$PIN" --root "$EILIKRINEIA_REPO" pinned-ok "$PIN" | grep -q '"ok": t
   exit 1
 fi
 
-"$PY" "$PIN" --root "$EILIKRINEIA_REPO" witness
 "$PY" "$PIN" --root "$EILIKRINEIA_REPO" audit --auditor "${EILIKRINEIA_AUDITOR:-grok}"
 "$PY" "$PIN" --root "$EILIKRINEIA_REPO" publish

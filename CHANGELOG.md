@@ -3,7 +3,26 @@
 All notable changes are listed here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [1.0.1] — 2026-10-29
+
+### Security
+- The pinned key list and the pinned auditor code now count only entries the owner really signed. In 1.0.0 the
+  last entry carrying `signers_sha256` or `code_sha256` counted whatever its role, type or signature: a raw
+  unsigned file in `chain/` made `pinned-ok` accept any code (and the auditor job adopts code before it verifies),
+  and an agent-signed entry could commit a key list with a planted owner key. Found by an adversarial review of
+  `PROTOCOL.md`, reproduced in a scratch ledger, never used in this repository's ledger (entry #75).
+- Every entry is checked against the key list in force when it was written, kept in `keys/` as
+  `allowed_signers.<sha256>` whenever the owner signs one; the current file is never trusted by itself. An owner
+  key is therefore replaced by a `keys` entry signed with the OLD owner key.
+- `verify` fails closed on an unknown type, an unknown role, a field outside the hash, and an owner-only field
+  (`signers_sha256`, `code_sha256`, `predecessor`) on any other entry.
+- `pinned-ok` anchors the trust root outside the folders the agent can write: the whole chain must be well linked
+  and every entry the witness (in the auditor's account) has seen must be unchanged, so a forged genesis or a cut
+  tail cannot bring back older or foreign code (second adversarial review, entry #77). Entries that go back in
+  time or are not JSON objects end the trusted prefix; malformed signatures no longer crash the check; the key
+  list is hashed and handed to `ssh-keygen` from the same bytes.
+- `scripts/auditor-run.sh` runs the witness before deciding to adopt new code. It is installed as root in the
+  auditor's account: re-run `scripts/install-auditor-macos.sh` with `sudo` after signing this release's code.
 
 ### Added
 - `PROTOCOL.md`: normative wire format and verification of protocol 1, as implemented, and the protocol 2 draft

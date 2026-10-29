@@ -68,19 +68,20 @@ python3 eilikrineia.py reveal 12         # text + salt of one entry, to publish 
 
 ## Wire format and verification (protocol 1, normative)
 
-This section describes protocol 1 exactly as `eilikrineia.py` 1.0.0 implements it. Until now it lived only in code.
-The key words MUST, MUST NOT, SHOULD and MAY are to be read as described in BCP 14 (RFC 2119, RFC 8174) when, and
-only when, they appear in all capitals. The protocol version is independent of the program's SemVer version.
+This section describes protocol 1 as `eilikrineia.py` 1.0.1 implements it. The key words MUST, MUST NOT, SHOULD and
+MAY are to be read as described in BCP 14 (RFC 2119, RFC 8174) when, and only when, they appear in all capitals.
+The protocol version is independent of the program's SemVer version.
 
 ### Layout
 
 | Path | Public | Content |
 |---|---|---|
 | `chain/NNNNNN.json` | yes | one entry per file, `NNNNNN` = `seq` zero-padded to 6 digits |
-| `keys/allowed_signers` | yes | role keys in the ssh-keygen ALLOWED SIGNERS format, namespace `eilikrineia` |
+| `keys/allowed_signers` | yes | current role keys, ssh-keygen ALLOWED SIGNERS format, namespace `eilikrineia` |
+| `keys/allowed_signers.<sha256>` | yes | a copy of every key list the owner signed, named by its SHA-256 (from 1.0.1) |
 | `stamps/NNNNNN.txt`, `.ots` | yes | `eilikrineia\nseq N\nhead H\n` and its OpenTimestamps proof |
 | `private/texts/NNNNNN.json` | no | `{seq, hash, salt, text, claims, attachments}` |
-| `private/vault/` | no | gzip copies of evidence, named by the SHA-256 of the original bytes |
+| `private/vault/<sha256>.gz` | no | gzip copy of an evidence file, named by the SHA-256 of the original bytes (older copies: `<sha256>`, uncompressed) |
 
 ### Canonical JSON
 
@@ -89,7 +90,7 @@ only when, they appear in all capitals. The protocol version is independent of t
 protocol 1 (integers below 2^53, strings, lists, objects with ASCII keys, no floating-point numbers) this output is
 identical to RFC 8785 (JCS); it differs from JCS only for floating-point numbers and for keys outside the Basic
 Multilingual Plane. This repository's own ledger stays inside the domain (ledger entry #71). Writers MUST NOT put
-floating-point numbers or non-ASCII keys in any hashed or committed object; 1.0.0 does not enforce this yet (an
+floating-point numbers or non-ASCII keys in any hashed or committed object; 1.0.1 does not enforce this yet (an
 `equals` claim accepts any JSON value).
 
 ### Entry
@@ -97,124 +98,194 @@ floating-point numbers or non-ASCII keys in any hashed or committed object; 1.0.
 | Field | Type | Hashed | Meaning |
 |---|---|---|---|
 | `seq` | integer | yes | 1, 2, 3, ... without gaps |
-| `time` | string | yes | UTC, `YYYY-MM-DDTHH:MM:SSZ`, never earlier than the previous entry |
+| `time` | string | yes | UTC, `YYYY-MM-DDTHH:MM:SSZ`, declared by the writer, never earlier than the previous entry |
 | `role` | string | yes | `owner`, `agent` or `auditor` |
 | `type` | string | yes | one of the types in the table above |
 | `commitment` | hex | yes | `SHA-256(salt ‖ canonical({text, claims, attachments}))`, salt = 32 random bytes |
 | `attachments` | list of hex | yes | sorted, unique SHA-256 of every attached file and every claim's evidence file |
 | `prev` | hex | yes | `hash` of the previous entry; 64 zeros for `seq` 1 |
-| `corrects`, `audits` | hex | yes, when present | `hash` of an earlier entry |
-| `signers_sha256` | hex | yes, when present | SHA-256 of `keys/allowed_signers`; on `genesis` and `keys` |
-| `code_sha256` | hex | yes, when present | SHA-256 of `eilikrineia.py`; on `genesis` and `code` |
-| `predecessor` | object | yes, when present | `{version, entries, head}` of a ledger taken over; on `genesis` only |
+| `corrects`, `audits` | hex | yes, when present | `hash` of an earlier entry; `audits` marks an auditor alarm about it |
+| `signers_sha256` | hex | yes, when present | SHA-256 of `keys/allowed_signers`; only on owner `genesis` and `keys` |
+| `code_sha256` | hex | yes, when present | SHA-256 of `eilikrineia.py`; only on owner `genesis` and `code` |
+| `predecessor` | object | yes, when present | `{version, entries, head}` of a ledger taken over; only on owner `genesis` |
 | `hash` | hex | — | `SHA-256(canonical(the hashed fields present))` |
 | `signature` | string | — | `ssh-keygen -Y sign -n eilikrineia` over the ASCII bytes of `hash`, no newline |
+
+### Key list in force
+
+The **well-linked prefix** of a chain ends before the first entry whose `seq` is not its position, whose `prev` is
+not the previous `hash`, or whose `hash` does not recompute. Inside it, the key list in force at entry 1 is the one
+the owner genesis commits (the trust root); at every later entry it is the list committed by the last owner
+`genesis` or `keys` entry before it **whose signature verifies against the list in force at that entry**. The
+current `keys/allowed_signers` is never trusted by itself: a key planted in it must not be able to sign the entry
+that would approve it. Consequently an owner key is replaced by a `keys` entry signed with the old owner key.
+A key list is available when it is the current file or its copy `keys/allowed_signers.<sha256>`.
+
+The well-linked prefix also ends at an entry that is not a JSON object or whose `time` is earlier than the previous
+one, so an owner entry backdated into a retired key's window never counts.
+
+The pinned auditor code is the `code_sha256` of the last owner `genesis` or `code` entry of the well-linked prefix
+whose signature verifies against the key list in force at that entry. The auditor job adopts new code only when
+its SHA-256 equals the pinned one (`pinned-ok`), the whole chain is well linked, and every entry the witness has
+already recorded is present and unchanged.
+
+**Trust anchor.** Everything above is computed from `chain/` and `keys/`, which the agent's account can write; a
+genesis signed by an attacker key, with its key list planted, would be self-consistent. The anchor is therefore
+outside those folders: for the auditor, the witness file in its own account (which holds the hash of entry 1 and
+of every later entry it saw); for an outside reader, the genesis hash obtained from a source the operator does not
+control (an archived release, a published timestamp, the owner). A verifier SHOULD compare entry 1's hash with such
+an anchor.
 
 ### Verification
 
 A verifier MUST report a problem when any of these fails, and the ledger is valid only with no problem:
 
 1. Entry 1 has `type` `genesis` and `role` `owner`.
-2. `keys/allowed_signers` hashes to the `signers_sha256` of the last entry that carries one.
+2. `keys/allowed_signers` hashes to the key list committed last, as defined above.
 3. For every entry: `seq` is its position; `prev` is the previous `hash`; `hash` recomputes; `time` is not earlier
    than the previous `time`; `corrects` and `audits` point to earlier hashes; owner-only types are signed by `owner`
    and auditor-only types by `auditor`.
-4. `ssh-keygen -Y verify -I <role> -n eilikrineia -O verify-time=<time>` accepts the signature against
-   `keys/allowed_signers`, so a key counts only inside its `valid-after` / `valid-before` window.
-5. With the private folder (`verify --private`): every commitment recomputes from its text and salt; every vault
-   copy hashes to its own name; every excerpt re-cut from the vault hashes to its recorded `excerpt_sha256`.
+4. For every entry: `type` and `role` are known; there is no field besides the hashed ones, `hash` and
+   `signature`; `signers_sha256`, `code_sha256` and `predecessor` appear only where the table above allows them.
+5. `ssh-keygen -Y verify -I <role> -n eilikrineia -O verify-time=<time>` accepts the signature against the key
+   list in force at the entry (or the current list past the well-linked prefix), so a key counts only inside its
+   `valid-after` / `valid-before` window.
+6. With the private folder (`verify --private`): every commitment recomputes from its text and salt; every vault
+   copy an entry references hashes to its own name; every excerpt re-cut from the vault hashes to its recorded
+   `excerpt_sha256`.
 
-### Known gap of protocol 1 verifiers
+### Excerpts, as implemented
 
-A 1.0.0 verifier does not check that `type` is known and hashes only the fields listed above. In a scratch ledger,
-an entry with an unknown type and an extra field verifies ok, and editing the extra field after signing still
-verifies ok (ledger entry #70). A ledger that uses anything from protocol 2 MUST therefore be verified by a
-protocol 2 verifier; a 1.0.0 verifier is not evidence about it.
+Two implementations agree on `excerpt_sha256` only if they cut identically. Protocol 1 cuts the vault copy decoded
+as UTF-8 with invalid bytes replaced by U+FFFD:
+
+- `{"lines": [a, b]}`: Python `str.splitlines()` (which also splits on `\x0b \x0c \x1c-\x1e \x85 U+2028 U+2029`),
+  lines `a` to `b` inclusive, joined by `\n`;
+- `{"json": "/p/q"}`: split on `/`, empty parts dropped, integer index for lists (no RFC 6901 `~0`/`~1` escapes),
+  the node serialized with `json.dumps(node, ensure_ascii=False, sort_keys=True)` (default separators, not
+  canonical JSON);
+- `{"all": true}`: the whole text.
+
+Predicates follow Python semantics: `number` uses `re.search` (`\d` matches any Unicode digit) and `int()`;
+`equals` compares parsed JSON with `==` (so `true == 1 == 1.0`). An independent verifier MUST reproduce these.
+
+### What a 1.0.1 verifier does not check
+
+- The presence and format of every field (`time` format, `attachments` sorted and unique, a missing `commitment`).
+- That the public `attachments` equal the set derived from the private body.
+- The OpenTimestamps proofs in `stamps/` (verify them with `ots verify`).
+- An upper bound on `time`: an entry dated in the future is accepted, and every honest entry after it then reads
+  as backdated, which stops `audit` and `publish` until the owner intervenes.
+- Concurrent writers: `record` takes no lock.
+
+### Defect fixed in 1.0.1
+
+In 1.0.0 the pinned key list and the pinned code were taken from the last entry carrying the field, whatever its
+role, type or signature, and a verifier accepted unknown types and fields. A raw unsigned file in `chain/` made
+`pinned-ok` accept arbitrary code, and an agent-signed entry could commit a key list with a planted owner key
+(ledger entries #70 and #75). A first fix still trusted a genesis found in `chain/` and allowed cutting the tail
+back to older code (entry #77); 1.0.1 anchors both in the witness. Do not use a 1.0.0 verifier.
 
 ---
 
 ## Protocol 2 (draft, not implemented)
 
-Status: draft for review. Nothing here is implemented; the program still writes and verifies protocol 1. Each
-addition below names the problem it solves and reuses protocol 1 where it can. Items marked [OPEN] wait for the
-owner's decision.
+Status: draft for review, revised after an adversarial review (2026-10-29). Nothing here is implemented; the
+program still writes and verifies protocol 1. Each addition names the problem it solves and reuses protocol 1
+where it can. Items marked [OPEN] wait for the owner's decision.
 
 ### 2.1 Versioning and fail-closed verification
 
-- A protocol 2 entry MUST carry `protocol: 2`. An entry without `protocol` is protocol 1.
-- The hash of a protocol 2 entry MUST cover every top-level field except `hash` and `signature` (not a fixed list),
-  so that no field can be added or edited without breaking the hash.
-- A protocol 2 verifier MUST report as a problem any unknown `type`, any unknown top-level field, and any
-  `protocol` value it does not implement.
+- A protocol 2 entry MUST carry `protocol: 2`. An entry without `protocol` is protocol 1; an explicit
+  `protocol: 1` is invalid (protocol 1 does not hash that field).
+- The hash of a protocol 2 entry MUST cover every top-level field except `hash` and `signature`. An absent field
+  and a `null` field are different; writers MUST omit a field rather than set it to `null`. A JSON object with a
+  duplicate key MUST be rejected.
+- Fields introduced by protocol 2 are valid only on protocol 2 entries; on a protocol 1 entry they are unknown
+  fields (protocol 1 would not hash them).
+- A protocol 2 verifier MUST report any unknown `type`, unknown top-level field, `protocol` value it does not
+  implement, and any field on a type that does not allow it (rule 4 of protocol 1 carries over).
+- Each role has a closed list of types: `owner` (`genesis`, `keys`, `code`, `decision`, and agent types), `agent`
+  (`measured`, `assertion`, `opinion`, `correction`, `run`), `auditor` (`audit`, `checkpoint`), `witness-<id>`
+  (`witness_cosign` only).
 - Downgrade is forbidden: after the first protocol 2 entry, every later entry MUST be protocol 2.
-- The first protocol 2 entry MUST be signed by the owner (a `code` entry pinning a protocol 2 verifier), so the
-  switch is rooted in the owner like every other change of rules.
-- A 1.0.x patch SHOULD make protocol 1 verifiers fail closed on unknown types and fields, which shrinks the gap
-  described above for anyone who has not upgraded.
+- The first protocol 2 entry MUST be an owner `code` entry pinning a protocol 2 verifier.
+- A protocol 1 verifier reports every protocol 2 entry as altered, since it does not hash `protocol`; a 1.0.x
+  release SHOULD say "unsupported protocol" instead.
 
 ### 2.2 Witness quorum (`witness_cosign`)
 
-Problem: the witness of protocol 1 is a file in another OS account; its evidence lives outside the ledger, and a
-single operator can still show different heads to different readers.
+Problem: the protocol 1 witness is a file in another OS account, outside the ledger; one operator can still show
+different heads to different readers.
 
-- New role pattern `witness-<id>`: each witness has its own key line in `keys/allowed_signers`, added by an owner
-  `keys` entry like any key.
-- New type `witness_cosign`, signed by a witness role, with `audits` set to the head hash it saw. No new field: the
-  existing `audits` field already means "this entry vouches for that hash".
-- New public field `policy` on `genesis` and `decision` entries: `{"witness_quorum": N, "witnesses": [ids]}`. The
-  verifier reports every head not cosigned by at least `N` distinct listed witnesses after the policy's entry.
-- The witness's own file and its account separation stay deployment practice, not protocol.
+- Each witness has its own principal `witness-<id>` and its own key line, added by an owner `keys` entry. Principals
+  MUST be exact names: no wildcards, no comma lists, no `cert-authority`.
+- New type `witness_cosign` with a new field `cosigns`, which MUST equal `prev`: the witness vouches exactly for
+  the head it extends, never for entries it did not see. (`audits` is not reused: in protocol 1 it marks an alarm.)
+  A cosign has no private body; its `commitment` is 64 zeros and `verify --private` skips it.
+- A witness keeps state and cosigns only a head that extends the last head it cosigned; it takes the cosign `time`
+  from its own clock and refuses to cosign a head whose `time` is later than its clock plus a tolerance [OPEN:
+  tolerance, suggested 5 minutes].
+- New public field `policy` on protocol 2 owner `genesis` and `decision` entries:
+  `{"witness_quorum": N, "witnesses": ["<id>", ...]}`. Entries after the last head cosigned by at least `N` listed
+  witnesses with distinct keys form the **unwitnessed tail**; a verifier reports its length rather than failing.
+- Trust anchor outside the ledger: the owner key alone cannot prevent an owner who runs the service from creating
+  witness keys of his own. A verifier MUST compare the owner key fingerprint and the witness key fingerprints with a
+  source the operator does not control (for example, the witness's own published key, or a fingerprint printed on
+  the receipt and checked against the client's records). A reader MUST take the head from a witness, not from the
+  operator, so a truncated copy that ends before a `policy` entry is detected.
 
 ### 2.3 Scoped agent keys (`grant`)
 
-Problem: an agent key today may record every agent type at any time its key is valid.
+Problem: an agent key may record every agent type at any time it is valid.
 
-- Time windows already exist: `valid-after` and `valid-before` in `keys/allowed_signers`, enforced by
-  `ssh-keygen -O verify-time`. Protocol 2 adds no second window.
-- New public field `scopes` on `keys` entries: `{"<principal>": ["measured", "run", ...]}`. A verifier reports an
-  entry whose type is outside its signer's scope at that time. A principal absent from `scopes` keeps the protocol
-  1 permissions.
-- Rule from the brief, "entry time is not later than the witness time": satisfied by 2.2, since a cosign is an entry
-  later in the chain and `time` never decreases.
+- Time windows already exist: `valid-after` and `valid-before` in the key list. Because `time` is declared by the
+  writer, an expiry is only as strong as the witness clock of 2.2.
+- New public field `scopes` on protocol 2 owner `keys` entries: `{"<principal>": ["measured", "run", ...]}`. The
+  types a principal may record are the intersection of its scope with its role's types. A scope stays in force
+  until a later `keys` entry replaces it; a `keys` entry without `scopes` keeps the previous scopes.
+- Scopes apply per principal; to scope one key, give it its own principal (`agent-<id>`, role `agent`).
 
 ### 2.4 Memory seals (convention, no wire change)
 
 Problem: agent memory files can be edited or rolled back between sessions without trace.
 
-- A seal is a `measured` entry whose attachment is the memory file (its SHA-256 is public in `attachments`) and
-  whose private body says `{"event": "load" | "save", "path", "byte_len", "session_id"}`.
-- A seal check is a later `measured` entry with an `equals` claim comparing the current file's SHA-256 to the sealed
-  one. A mismatch is recorded, never hidden; refusing to load is the loader's policy, not the ledger's.
+- A seal is a `measured` entry that attaches the memory file (its SHA-256 becomes public in `attachments`); its
+  private text states `{"event": "load" | "save", "path", "byte_len", "session_id"}` as JSON.
+- A seal check attaches the file again; the mechanical comparison is between the two public `attachments` hashes.
+  A mismatch is recorded, never hidden; refusing to load is the loader's policy.
 
 ### 2.5 Tool calls (convention, no wire change)
 
 `tool_call` from the brief is a `run` entry whose attachments are the arguments, the result and the files read or
-written, each committed by hash. Nothing new is needed on the wire.
+written, each committed by hash.
 
 ### 2.6 Receipts (bundle format, no new entry type)
 
 Problem: a third party must check, without trusting the operator, that a source existed with given bytes and that
 an excerpt was found in it at a given time.
 
-- A receipt is a portable bundle: the public entry, its revealed private body (`reveal`: text, salt, claims), the
-  excerpt, and optionally the source file. Anyone recomputes the commitment, re-cuts the excerpt from the source,
-  checks `excerpt_sha256`, re-runs the claim predicate, and verifies the chain and its timestamp.
+- A receipt is a portable bundle: the public entry, its whole private body (text, salt, claims and attachments;
+  1.0.1 `reveal` returns only text and salt and must be extended), the excerpt, and optionally the source file.
+  Anyone recomputes the commitment, re-cuts the excerpt, checks `excerpt_sha256`, re-runs the claim predicate, and
+  verifies the chain, its witnesses and its timestamp.
 - Status is derived by the checker, never asserted: the claim passes (`located_and_matched`), the locator does not
-  fit the source (`not_located`), or the excerpt differs (`mismatch`). A receipt never states that a source does not
-  exist, only that the method did not locate it.
-- Every receipt carries the non-guarantees of this protocol: existence and literal text at time T only, never
-  relevance, interpretation or current validity.
-- [OPEN] Public receipt fields. Recommendation: none. Keeping `source_sha256` and `status` inside the commitment
-  until a receipt is revealed keeps the operator blind; a public source hash would let anyone confirm which public
-  document a client cited. The cost: a receipt cannot be found by searching the public chain, only by its bundle.
+  fit the source (`not_located`), or the excerpt differs (`mismatch`). A receipt never states that a source does
+  not exist, only that the method did not locate it.
+- "At time T" means: not after the OpenTimestamps time of a later head; the entry's own `time` is self-declared.
+- Every receipt carries the non-guarantees of this protocol: existence and literal text, never relevance,
+  interpretation or current validity.
+- Privacy, measured against protocol 1: the public `attachments` field already exposes the SHA-256 of every
+  evidence file, so anyone holding a public document can confirm which entries cite it, and the private body stores
+  absolute file paths. [OPEN] Recommendation for protocol 2: publish `SHA-256(salt_i ‖ sha256)` per attachment
+  instead of the raw hash, and store base names only. Cost: none for verification, which already needs the
+  revealed body to check a vault copy.
 
 ### 2.7 Reserved
 
-`provider_attestation` is reserved for signed model outputs, if a vendor ever ships them. Until it is specified,
-a protocol 2 verifier MUST treat it as an unknown field.
+`provider_attestation` is reserved for signed model outputs. Until specified it is an unknown field.
 
 ### 2.8 Canonical JSON in protocol 2
 
-[OPEN] Two ways to close the gap with RFC 8785: keep `canonical()` and refuse floats and non-ASCII keys at write
-time (no change for existing entries), or switch protocol 2 hashing to full JCS. Recommendation: refuse at write
-time; on the allowed domain both are byte-identical, so there is nothing to migrate.
+[OPEN] Keep `canonical()` and refuse floats and non-ASCII keys at write time, or switch to full RFC 8785.
+Recommendation: refuse at write time; on the allowed domain both are byte-identical, so nothing migrates.

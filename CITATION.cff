@@ -12,7 +12,7 @@ abstract: >-
   files. A witness in the auditor's separate account detects silent rewriting of
   the unpublished tail within seconds.
 type: software
-version: "1.0.0"
+version: "1.0.1"
 date-released: "2026-10-29"
 doi: "10.5281/zenodo.23752630"
 identifiers:

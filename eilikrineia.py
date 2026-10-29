@@ -140,12 +140,21 @@ def sign(role, message, root=None):
         return (Path(d) / "m.sig").read_text()
 
 
-def signature_ok(role, message, signature, root=None, when=None):
-    """Verify a signature against the keys valid for ``role`` at time ``when``."""
+def signature_ok(role, message, signature, root=None, when=None, signers=None):
+    """Verify a signature against the keys valid for ``role`` at ``when``.
+
+    ``signers`` is the key list as bytes (the exact bytes whose hash was checked, so the file cannot change between
+    the check and ssh-keygen reading it); by default the current ``keys/allowed_signers``. Anything that is not text
+    is not a signature.
+    """
+    if not all(isinstance(x, str) for x in (role, message, signature)) or not isinstance(when, (str, type(None))):
+        return False
     with tempfile.TemporaryDirectory() as d:
         sig = Path(d) / "s.sig"
         sig.write_text(signature)
-        signers = str(layout(root)["signers"])
+        if signers is not None:
+            (Path(d) / "signers").write_bytes(signers)
+        signers = str(Path(d) / "signers" if signers is not None else layout(root)["signers"])
         cmd = ["ssh-keygen", "-Y", "verify", "-f", signers, "-I", role, "-n", NAMESPACE, "-s", str(sig)]
         if when:
             cmd += ["-O", "verify-time=" + re.sub(r"[-:T]", "", when)]
@@ -293,14 +302,63 @@ def build_claim(spec, root=None):
 # ---------- recording ----------
 
 
-def committed_keys(chain):
+def key_lists(chain, root=None):
+    """Return, for each entry of the well-linked prefix, the key list in force when it was written (bytes or None).
+
+    The well-linked prefix ends at the first entry that is not a JSON object, whose ``seq``, ``prev`` or hash is
+    wrong, or whose ``time`` is earlier than the previous one: an old owner entry copied to a new place, or one
+    backdated into a retired key's window, never counts. The genesis is checked against the list it commits (the
+    trust root, anchored outside the chain by the witness, see pinned_ok); every later entry against the list of the
+    last owner ``genesis``/``keys`` entry before it, and such an entry moves the list only when that previous list
+    verifies its signature. The current file is never trusted by itself: a key
+    planted in keys/allowed_signers must not be able to sign the entry that would approve it. Hence an owner key is
+    replaced by a ``keys`` entry signed with the OLD owner key.
+    """
+    lists, prev, last_time, trusted = [], GENESIS_PREV, "", None
+    for i, e in enumerate(chain, 1):
+        if not isinstance(e, dict) or not isinstance(e.get("time"), str) or e["time"] < last_time:
+            break
+        if e.get("seq") != i or e.get("prev") != prev or entry_hash(e) != e.get("hash"):
+            break
+        prev, last_time = e["hash"], e["time"]
+        if i == 1 and e.get("role") == "owner" and e.get("type") == "genesis":
+            trusted = e.get("signers_sha256")
+        keys = signers_file(trusted, root) if trusted else None
+        lists.append(keys)
+        if keys and e.get("role") == "owner" and e.get("type") in ("genesis", "keys") and "signers_sha256" in e:
+            if signature_ok("owner", e["hash"], e.get("signature", ""), root, e.get("time"), keys):
+                trusted = e["signers_sha256"]
+    return lists
+
+
+def owner_signed(chain, kinds, field, root=None):
+    """Return ``field`` of the last owner entry of a type in ``kinds`` that the owner really signed (see key_lists)."""
+    found = None
+    for e, keys in zip(chain, key_lists(chain, root), strict=False):
+        if keys and e.get("role") == "owner" and e.get("type") in kinds and field in e:
+            if signature_ok("owner", e["hash"], e.get("signature", ""), root, e.get("time"), keys):
+                found = e[field]
+    return found
+
+
+def signers_file(digest, root=None):
+    """Return the bytes of the key list whose SHA-256 is ``digest``: the current file or the copy kept when signed."""
+    lay = layout(root)
+    for f in (lay["signers"], lay["keys"] / f"allowed_signers.{digest}"):
+        data = f.read_bytes() if f.is_file() else None
+        if data is not None and sha256_bytes(data) == digest:
+            return data
+    return None
+
+
+def committed_keys(chain, root=None):
     """Return the key-list hash last signed by the owner (genesis or 'keys')."""
-    return next((e["signers_sha256"] for e in reversed(chain) if "signers_sha256" in e), None)
+    return owner_signed(chain, ("genesis", "keys"), "signers_sha256", root)
 
 
-def committed_code(chain):
+def committed_code(chain, root=None):
     """Return the auditor code hash last signed by the owner (genesis or 'code')."""
-    return next((e["code_sha256"] for e in reversed(chain) if "code_sha256" in e), None)
+    return owner_signed(chain, ("genesis", "code"), "code_sha256", root)
 
 
 def record(role, kind, text, *, claims=(), attachments=(), corrects=None, audits=None, root=None, when=None,
@@ -347,7 +405,7 @@ def record(role, kind, text, *, claims=(), attachments=(), corrects=None, audits
         raise SystemExit("Genesis only on an empty chain.")
     if not chain and kind != "genesis":
         raise SystemExit("The chain must start with the owner's genesis.")
-    if chain and kind != "keys" and committed_keys(chain) != sha256_file(lay["signers"]):
+    if chain and kind != "keys" and committed_keys(chain, root) != sha256_file(lay["signers"]):
         raise SystemExit("The key list changed after the owner's last signature; the owner must record 'keys'.")
     known = {e["hash"] for e in chain}
     for ref in (corrects, audits):
@@ -378,6 +436,7 @@ def record(role, kind, text, *, claims=(), attachments=(), corrects=None, audits
         entry["audits"] = audits
     if kind in ("genesis", "keys"):
         entry["signers_sha256"] = sha256_file(lay["signers"])
+        shutil.copyfile(lay["signers"], lay["keys"] / f"allowed_signers.{entry['signers_sha256']}")
     if kind in ("genesis", "code"):
         entry["code_sha256"] = sha256_file(lay["root"] / "eilikrineia.py")
     if kind == "genesis" and predecessor:
@@ -416,11 +475,12 @@ def verify(root=None, private=False, since=0):
     problems, prev, seen = [], GENESIS_PREV, set()
     chain = entries(root)
     lay = layout(root)
+    lists = key_lists(chain, root)  # key list in force at each entry; past the well-linked prefix, the current one
     if chain:
         first = chain[0]
         if first.get("type") != "genesis" or first.get("role") != "owner":
             problems.append("#1: the chain does not start with the owner's genesis")
-        if committed_keys(chain) != sha256_file(lay["signers"]):
+        if committed_keys(chain, root) != sha256_file(lay["signers"]):
             problems.append("keys/allowed_signers differs from the list last signed by the owner")
     for i, e in enumerate(chain, 1):
         s = e.get("seq")
@@ -439,8 +499,21 @@ def verify(root=None, private=False, since=0):
             problems.append(f"#{s}: owner-only type signed by '{e.get('role')}'")
         if e.get("type") in AUDITOR_ONLY and e.get("role") != "auditor":
             problems.append(f"#{s}: auditor-only type signed by '{e.get('role')}'")
+        # fail closed: a field outside the hash or a type this verifier does not know could be edited unseen
+        if e.get("type") not in TYPES:
+            problems.append(f"#{s}: unknown type {e.get('type')!r}")
+        if e.get("role") not in ROLES:
+            problems.append(f"#{s}: unknown role {e.get('role')!r}")
+        problems += [f"#{s}: unknown field {k!r}" for k in sorted(set(e) - set(HASHED) - {"hash", "signature"})]
+        for field, kinds in (("signers_sha256", ("genesis", "keys")), ("code_sha256", ("genesis", "code")),
+                             ("predecessor", ("genesis",))):  # fmt: skip
+            if field in e and (e.get("role") != "owner" or e.get("type") not in kinds):
+                problems.append(f"#{s}: {field} outside an owner {'/'.join(kinds)} entry")
         if s > since:
-            if not signature_ok(e.get("role", ""), e.get("hash", ""), e.get("signature", ""), root, e.get("time")):
+            keys = lists[i - 1] if i <= len(lists) else None
+            if not signature_ok(
+                e.get("role", ""), e.get("hash", ""), e.get("signature", ""), root, e.get("time"), keys
+            ):
                 problems.append(f"#{s}: invalid signature for role '{e.get('role')}' at the entry's time")
             if private:
                 problems += _verify_private(e, root)
@@ -724,9 +797,23 @@ def genesis(root=None, text=None, predecessor=None):
                   attachments=[layout(root)["signers"], layout(root)["root"] / "eilikrineia.py"])  # fmt: skip
 
 
-def pinned_ok(code_path, root=None):
-    """Return True when ``code_path`` has the hash the owner last signed; the auditor refuses to run otherwise."""
-    return sha256_file(code_path) == committed_code(entries(root))
+def pinned_ok(code_path, root=None, ledger=None):
+    """Return True when ``code_path`` has the hash the owner last signed; the auditor refuses to run otherwise.
+
+    The trust root must not live only in folders the agent's account can write. So the whole chain must be well
+    linked, and every entry the witness has already seen (``ledger`` or ``EILIKRINEIA_WITNESS``, in the auditor's
+    account) must still be there unchanged: a forged genesis or a cut tail, which would bring back older code,
+    then fails here.
+    """
+    chain = entries(root)
+    if len(key_lists(chain, root)) != len(chain):
+        return False
+    path = Path(ledger or os.environ.get("EILIKRINEIA_WITNESS", ""))
+    if str(path) not in ("", ".") and path.is_file():
+        current = {e["seq"]: e["hash"] for e in chain}
+        if any(current.get(w["seq"]) != w["hash"] for w in json.loads(path.read_text())["seen"]):
+            return False
+    return sha256_file(code_path) == committed_code(chain, root)
 
 
 # ---------- timestamping and publishing ----------

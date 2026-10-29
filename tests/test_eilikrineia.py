@@ -80,6 +80,31 @@ class GenesisAndKeys(Ledger):
         ek.record("agent", "opinion", "signed with a retired key", root=self.root, when="2099-01-02T00:00:00Z")
         self.assertIn("#3: invalid signature", " ".join(ek.verify(self.root)["problems"]))
 
+    def test_owner_rotation_is_approved_by_the_old_owner_key(self):
+        keygen(self.root / "new_owner")
+        ek.rotate("owner", self.root / "new_owner.pub", self.root, when="20990101000000Z")
+        ek.record(
+            "owner", "keys", "New owner key, signed with the old one.", root=self.root, when="2099-01-01T00:00:01Z"
+        )
+        os.environ["EILIKRINEIA_KEY_OWNER"] = str(self.root / "new_owner")
+        try:
+            ek.record("owner", "decision", "First act of the new key.", root=self.root, when="2099-01-02T00:00:00Z")
+        finally:
+            os.environ.pop("EILIKRINEIA_KEY_OWNER")
+        self.assertTrue(ek.verify(self.root)["ok"], ek.verify(self.root)["problems"])
+        ek.record("owner", "decision", "The retired key again.", root=self.root, when="2099-01-03T00:00:00Z")
+        self.assertIn("#4: invalid signature", " ".join(ek.verify(self.root)["problems"]))
+
+    def test_owner_rotation_signed_only_by_the_new_key_is_not_trusted(self):
+        keygen(self.root / "new_owner")
+        ek.rotate("owner", self.root / "new_owner.pub", self.root, when="20990101000000Z")
+        os.environ["EILIKRINEIA_KEY_OWNER"] = str(self.root / "new_owner")
+        try:
+            ek.record("owner", "keys", "Self-approved key.", root=self.root, when="2099-01-01T00:00:01Z")
+        finally:
+            os.environ.pop("EILIKRINEIA_KEY_OWNER")
+        self.assertIn("differs from the list last signed", " ".join(ek.verify(self.root)["problems"]))
+
     def test_rotation_handles_lines_without_options_and_comments(self):
         signers = self.root / "keys" / "allowed_signers"
         bare = [ln.replace(' namespaces="eilikrineia"', "") if ln.startswith("agent ") else ln
@@ -233,6 +258,119 @@ class PinnedCode(Ledger):
         self.assertFalse(ek.pinned_ok(code, self.root))
         ek.record("owner", "code", "I approve this code.", root=self.root)
         self.assertTrue(ek.pinned_ok(code, self.root))
+
+    def forge(self, fields, sign_as=None):
+        """Append a hand-made entry after the head; sign it with ``sign_as`` or leave it unsigned."""
+        head = ek.entries(self.root)[-1]
+        e = {"seq": head["seq"] + 1, "time": ek.now_utc(), "role": "agent", "type": "opinion",
+             "commitment": "00" * 32, "attachments": [], "prev": head["hash"], **fields}  # fmt: skip
+        e["hash"] = ek.entry_hash(e)
+        e["signature"] = ek.sign(sign_as, e["hash"], self.root) if sign_as else "none"
+        (self.root / "chain" / f"{e['seq']:06d}.json").write_text(json.dumps(e))
+        return e
+
+    def test_unsigned_raw_entry_cannot_pin_code(self):
+        evil = self.root / "evil.py"
+        evil.write_text("print('not signed by the owner')\n")
+        self.forge({"role": "owner", "type": "code", "code_sha256": ek.sha256_file(evil)})
+        self.assertFalse(ek.pinned_ok(evil, self.root))
+
+    def test_owner_entry_replayed_at_the_end_cannot_pin_old_code(self):
+        code = self.root / "eilikrineia.py"
+        old = code.read_bytes()
+        genesis = ek.entries(self.root)[0]
+        code.write_text(code.read_text() + "\n# new owner-approved code\n")
+        ek.record("owner", "code", "I approve the new code.", root=self.root)
+        (self.root / "chain" / f"{len(ek.entries(self.root)) + 1:06d}.json").write_text(json.dumps(genesis))
+        code.write_bytes(old)
+        self.assertFalse(ek.pinned_ok(code, self.root))
+
+    def test_agent_cannot_move_the_key_list_or_the_code(self):
+        keygen(self.root / "fake_owner")
+        kind, body = (self.root / "fake_owner.pub").read_text().split()[:2]
+        signers = self.root / "keys" / "allowed_signers"
+        signers.write_text(signers.read_text() + f'owner namespaces="eilikrineia" {kind} {body}\n')
+        self.forge({"signers_sha256": ek.sha256_file(signers)}, sign_as="agent")
+        problems = " ".join(ek.verify(self.root)["problems"])
+        self.assertIn("differs from the list last signed", problems)
+        self.assertIn("signers_sha256 outside an owner", problems)
+        evil = self.root / "evil.py"
+        evil.write_text("print('planted owner key')\n")
+        os.environ["EILIKRINEIA_KEY_OWNER"] = str(self.root / "fake_owner")
+        try:
+            self.forge({"role": "owner", "type": "code", "code_sha256": ek.sha256_file(evil)}, sign_as="owner")
+        finally:
+            os.environ.pop("EILIKRINEIA_KEY_OWNER")
+        self.assertFalse(ek.pinned_ok(evil, self.root))
+
+    def test_unknown_type_role_and_field_are_problems(self):
+        self.forge({"type": "receipt", "status": "located_and_matched"}, sign_as="agent")
+        problems = " ".join(ek.verify(self.root)["problems"])
+        self.assertIn("unknown type 'receipt'", problems)
+        self.assertIn("unknown field 'status'", problems)
+
+    def test_witness_anchors_the_code_against_a_forged_genesis_and_a_cut_tail(self):
+        code = self.root / "eilikrineia.py"
+        old = code.read_bytes()
+        ek.record("agent", "opinion", "work", root=self.root)
+        code.write_text(code.read_text() + "\n# newer owner-approved code\n")
+        ek.record("owner", "code", "Newer code.", root=self.root)
+        witness = Path(self._d.name) / "witness.json"
+        ek.witness(self.root, witness)
+        os.environ["EILIKRINEIA_WITNESS"] = str(witness)
+        try:
+            self.assertTrue(ek.pinned_ok(code, self.root))
+            chain = sorted((self.root / "chain").glob("*.json"))
+            tail = {f: f.read_text() for f in chain[2:]}
+            for f in tail:  # cut the tail: the genesis-pinned older code would come back
+                f.unlink()
+            older = Path(self._d.name) / "older.py"
+            older.write_bytes(old)
+            self.assertFalse(ek.pinned_ok(older, self.root))
+            for f, text in tail.items():
+                f.write_text(text)
+            keygen(self.root / "attacker")  # a genesis signed by an attacker key, with its key list planted
+            kind, body = (self.root / "attacker.pub").read_text().split()[:2]
+            keep = [
+                ln
+                for ln in (self.root / "keys/allowed_signers").read_text().splitlines()
+                if not ln.startswith("owner ")
+            ]
+            planted = "\n".join(keep + [f'owner namespaces="eilikrineia" {kind} {body}']) + "\n"
+            digest = ek.sha256_bytes(planted.encode())
+            (self.root / "keys" / f"allowed_signers.{digest}").write_text(planted)
+            evil = self.root / "evil.py"
+            evil.write_text("print('attacker code')\n")
+            g = {"seq": 1, "time": ek.now_utc(), "role": "owner", "type": "genesis", "commitment": "00" * 32,
+                 "attachments": [], "prev": ek.GENESIS_PREV, "signers_sha256": digest,
+                 "code_sha256": ek.sha256_file(evil)}  # fmt: skip
+            g["hash"] = ek.entry_hash(g)
+            os.environ["EILIKRINEIA_KEY_OWNER"] = str(self.root / "attacker")
+            g["signature"] = ek.sign("owner", g["hash"], self.root)
+            os.environ.pop("EILIKRINEIA_KEY_OWNER")
+            (self.root / "chain" / "000001.json").write_text(json.dumps(g))
+            self.assertFalse(ek.pinned_ok(evil, self.root))
+        finally:
+            os.environ.pop("EILIKRINEIA_WITNESS", None)
+            os.environ.pop("EILIKRINEIA_KEY_OWNER", None)
+
+    def test_backdated_owner_code_entry_does_not_count(self):
+        evil = self.root / "evil.py"
+        evil.write_text("print('backdated')\n")
+        ek.record("agent", "opinion", "now", root=self.root, when="2099-01-01T00:00:00Z")
+        self.forge({"role": "owner", "type": "code", "code_sha256": ek.sha256_file(evil),
+                    "time": "2000-01-01T00:00:00Z"}, sign_as="owner")  # fmt: skip
+        self.assertFalse(ek.pinned_ok(evil, self.root))
+
+    def test_malformed_entries_do_not_crash_the_pinned_check(self):
+        evil = self.root / "evil.py"
+        evil.write_text("print('malformed')\n")
+        e = self.forge({"role": "owner", "type": "code", "code_sha256": ek.sha256_file(evil)})
+        e["signature"] = []
+        (self.root / "chain" / "000002.json").write_text(json.dumps(e))
+        self.assertFalse(ek.pinned_ok(evil, self.root))
+        (self.root / "chain" / "000002.json").write_text("[]")
+        self.assertFalse(ek.pinned_ok(self.root / "eilikrineia.py", self.root))
 
 
 class Publish(Ledger):
