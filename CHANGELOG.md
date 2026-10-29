@@ -3,6 +3,13 @@
 All notable changes are listed here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `PROTOCOL.md`: normative wire format and verification of protocol 1, as implemented, and the protocol 2 draft
+  (versioning with fail-closed verification, witness quorum, scoped agent keys, memory seals, tool calls,
+  receipts). Nothing of protocol 2 is implemented.
+
 ## [1.0.0] — 2026-10-29
 
 ### Fixed
