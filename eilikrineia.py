@@ -55,6 +55,7 @@ HASHED = (
 )  # fmt: skip
 MAX_EXCERPT = 2000  # characters an auditor model ever sees per piece of evidence
 SAMPLE_RATE = 0.25  # share of automated 'measured'/'run' entries sent to semantic audit
+KEY_TYPES = ("ssh-", "ecdsa-", "sk-")  # prefixes of ssh key types; anything else in field 2 is an options field
 
 
 # ---------- hashing and layout ----------
@@ -680,15 +681,28 @@ def init(root=None, roles=("agent", "auditor")):
 
 
 def rotate(role, new_public, root=None, when=None):
-    """Retire the current key of ``role`` (valid-before=now) and publish the new one (valid-after=now)."""
+    """Retire the current key of ``role`` (valid-before=now) and publish the new one (valid-after=now).
+
+    Lines follow the ssh-keygen ALLOWED SIGNERS format, ``principal [options] keytype key [comment]``; blank lines and
+    ``#`` comments pass through unchanged. A line that does not fit is refused before anything is written, so a
+    rotation never leaves a half-rewritten key list.
+    """
     when = when or datetime.datetime.now(datetime.UTC).strftime("%Y%m%d%H%M%SZ")
     signers = layout(root)["signers"]
     lines = []
     for line in signers.read_text().splitlines():
-        name, opts, rest = line.split(" ", 2)
+        if not line.strip() or line.lstrip().startswith("#"):
+            lines.append(line)
+            continue
+        fields = line.split()
+        has_opts = len(fields) > 1 and not fields[1].startswith(KEY_TYPES)
+        name, opts, key = fields[0], fields[1] if has_opts else "", fields[2 if has_opts else 1 :]
+        if len(key) < 2 or not key[0].startswith(KEY_TYPES):
+            raise SystemExit(f"Unreadable line in {signers.name}, nothing rotated: {line!r}")
         if name == role and "valid-before" not in opts:
-            opts += f',valid-before="{when}"'
-        lines.append(" ".join([name, opts, rest]))
+            opts = f'{opts},valid-before="{when}"' if opts else f'valid-before="{when}"'
+            line = " ".join([name, opts, *key])
+        lines.append(line)
     kind, body = Path(new_public).read_text().split()[:2]
     lines.append(f'{role} namespaces="{NAMESPACE}",valid-after="{when}" {kind} {body}')
     signers.write_text("\n".join(lines) + "\n")
@@ -773,7 +787,10 @@ def publish(root=None, push=True):
     key = secret_key("deploy", root)
     if key.exists():  # deploy key: write access to this repository only
         env["GIT_SSH_COMMAND"] = f"ssh -i {key} -o IdentitiesOnly=yes"
-    subprocess.run(git + ["fetch", "-q", "origin"], env=env, capture_output=True)
+    # fail closed: the leak checks below compare against origin/main, which is stale if the fetch failed
+    f = subprocess.run(git + ["fetch", "-q", "origin"], env=env, capture_output=True, text=True)
+    if f.returncode:
+        raise SystemExit("fetch failed; nothing pushed: " + f.stderr[-400:])
     ahead = subprocess.run(git + ["diff", "--name-only", "--diff-filter=AM", "origin/main..HEAD"],
                            capture_output=True, text=True).stdout.split()  # fmt: skip
     tracked = subprocess.run(git + ["ls-files"], capture_output=True, text=True).stdout.split()

@@ -80,6 +80,31 @@ class GenesisAndKeys(Ledger):
         ek.record("agent", "opinion", "signed with a retired key", root=self.root, when="2099-01-02T00:00:00Z")
         self.assertIn("#3: invalid signature", " ".join(ek.verify(self.root)["problems"]))
 
+    def test_rotation_handles_lines_without_options_and_comments(self):
+        signers = self.root / "keys" / "allowed_signers"
+        bare = [ln.replace(' namespaces="eilikrineia"', "") if ln.startswith("agent ") else ln
+                for ln in signers.read_text().splitlines()]  # fmt: skip
+        signers.write_text("# keys of this ledger\n\n" + "\n".join(bare) + "\n")
+        ek.record("owner", "keys", "Agent key without options.", root=self.root)
+        keygen(self.root / "new_agent")
+        ek.rotate("agent", self.root / "new_agent.pub", self.root, when="20990101000000Z")
+        lines = signers.read_text().splitlines()
+        self.assertEqual(lines[:2], ["# keys of this ledger", ""])
+        old = next(ln for ln in lines if ln.startswith("agent ") and "valid-after" not in ln)
+        self.assertEqual(old.split()[1:3], ['valid-before="20990101000000Z"', "ssh-ed25519"])
+        ek.record("owner", "keys", "New agent key.", root=self.root, when="2099-01-01T00:00:01Z")
+        ek.record("agent", "opinion", "signed with a retired key", root=self.root, when="2099-01-02T00:00:00Z")
+        self.assertIn("#4: invalid signature", " ".join(ek.verify(self.root)["problems"]))
+
+    def test_rotation_refuses_unparseable_line_and_writes_nothing(self):
+        signers = self.root / "keys" / "allowed_signers"
+        signers.write_text(signers.read_text() + "agent\n")
+        before = signers.read_bytes()
+        keygen(self.root / "new_agent")
+        with self.assertRaises(SystemExit):
+            ek.rotate("agent", self.root / "new_agent.pub", self.root, when="20990101000000Z")
+        self.assertEqual(signers.read_bytes(), before)
+
     def test_init_again_only_appends(self):
         before = (self.root / "keys" / "allowed_signers").read_text()
         self.assertEqual(ek.init(self.root)["added"], [])
@@ -247,6 +272,17 @@ class Publish(Ledger):
         f.write_text(json.dumps(e))
         with self.assertRaises(SystemExit):
             ek.publish(self.root)
+
+    def test_failed_fetch_pushes_nothing(self):
+        ek.record("agent", "opinion", "waiting for a reachable remote", root=self.root)
+        git = ["git", "-C", str(self.root)]
+        subprocess.run(git + ["remote", "set-url", "origin", str(Path(self._d.name) / "missing.git")], check=True)
+        with self.assertRaises(SystemExit) as caught:
+            ek.publish(self.root)
+        self.assertIn("fetch failed", str(caught.exception))
+        listed = subprocess.run(["git", "--git-dir", str(self.remote), "ls-tree", "-r", "--name-only", "main"],
+                                capture_output=True, text=True).stdout.split()  # fmt: skip
+        self.assertNotIn("chain/000002.json", listed)
 
 
 class ReadmeNumbers(unittest.TestCase):

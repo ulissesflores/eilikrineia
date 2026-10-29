@@ -12,7 +12,7 @@ abstract: >-
   files. A witness in the auditor's separate account detects silent rewriting of
   the unpublished tail within seconds.
 type: software
-version: "0.3.0"
+version: "1.0.0"
 repository-code: "https://github.com/ulissesflores/eilikrineia"
 url: "https://github.com/ulissesflores/eilikrineia"
 authors:

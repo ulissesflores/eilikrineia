@@ -3,6 +3,19 @@
 All notable changes are listed here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/). No release exists yet; no DOI before the owner authorizes it.
 
+## [1.0.0] — unreleased
+
+### Fixed
+- `publish` stops when `git fetch` fails: the leak checks compared against a stale `origin/main` (was: fetch
+  result ignored).
+- `rotate` reads the key list in the ssh-keygen ALLOWED SIGNERS format: lines without options are retired
+  correctly (was: `valid-before` glued to the key type), blank lines and comments pass through, and an unreadable
+  line stops the rotation before anything is written.
+
+### Added
+- README examples for `witness` and `audit`, with the deployment rule the code cannot enforce: the witness file
+  must be writable by the auditor's account only.
+
 ## [0.3.0] — 2026-10-23
 
 ### Changed
