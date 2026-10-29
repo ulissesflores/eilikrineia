@@ -13,6 +13,7 @@ abstract: >-
   the unpublished tail within seconds.
 type: software
 version: "1.0.0"
+date-released: "2026-10-29"
 repository-code: "https://github.com/ulissesflores/eilikrineia"
 url: "https://github.com/ulissesflores/eilikrineia"
 authors:

@@ -1,9 +1,9 @@
 # Changelog
 
 All notable changes are listed here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
-versions follow [SemVer](https://semver.org/). No release exists yet; no DOI before the owner authorizes it.
+versions follow [SemVer](https://semver.org/).
 
-## [1.0.0] — unreleased
+## [1.0.0] — 2026-10-29
 
 ### Fixed
 - `publish` stops when `git fetch` fails: the leak checks compared against a stale `origin/main` (was: fetch

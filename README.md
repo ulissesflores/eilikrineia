@@ -176,7 +176,7 @@ private/            never published: texts, salts, gzip evidence vault, private 
 
 ## Citation
 
-No DOI has been minted yet. Until then, cite the repository (see [`CITATION.cff`](CITATION.cff)):
+Each release is archived on Zenodo with its own DOI, listed on the release page. To cite the code, use [`CITATION.cff`](CITATION.cff) or:
 
 ```bibtex
 @software{flores2026eilikrineia,
@@ -184,6 +184,7 @@ No DOI has been minted yet. Until then, cite the repository (see [`CITATION.cff`
   orcid  = {https://orcid.org/0000-0002-6034-7765},
   title  = {eilikrineia: a public commitment ledger between a person and the AI agents working for them},
   year   = {2026},
+  version = {1.0.0},
   url    = {https://github.com/ulissesflores/eilikrineia}
 }
 ```
