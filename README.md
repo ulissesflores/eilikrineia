@@ -22,7 +22,7 @@
 > [!WARNING]
 > These mechanisms hold only while the agent cannot reach the owner's key, the auditor's account or the witness file
 > (see [What is and isn't guaranteed](#what-is-and-isnt-guaranteed)). Version 1.0.0 has a trust-root defect: do not
-> use its verifier or its auditor job ([`.github/SECURITY.md`](.github/SECURITY.md)).
+> use its verifier or its auditor job ([`.github/SECURITY.md`](.github/SECURITY.md)); use 1.0.1 or later.
 
 ## The word
 
@@ -204,7 +204,7 @@ Each release is archived on Zenodo with its own DOI. The concept DOI [10.5281/ze
   orcid  = {https://orcid.org/0000-0002-6034-7765},
   title  = {eilikrineia: a public commitment ledger between a person and the AI agents working for them},
   year   = {2026},
-  version = {1.0.0},
+  version = {1.0.1},
   doi    = {10.5281/zenodo.23752630},
   url    = {https://github.com/ulissesflores/eilikrineia}
 }

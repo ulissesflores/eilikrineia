@@ -2,8 +2,7 @@
 
 ## Supported versions
 
-Only the latest release receives fixes. Version 1.0.0 is affected by the advisory below. The fix is on `main`;
-the 1.0.1 release is pending.
+Only the latest release receives fixes. Version 1.0.0 is affected by the advisory below; version 1.0.1 fixes it.
 
 ## Advisory: trust root in 1.0.0 (fixed in 1.0.1)
 
@@ -14,7 +13,7 @@ the 1.0.1 release is pending.
   list with a planted owner key. The verifier also accepted unknown types and fields outside the hash.
 - **Exploited:** no. Reproduced in a scratch ledger; this repository's ledger carries the owner-only fields only on
   owner entries #1, #10 and #64 (ledger entries #70 and #75).
-- **Action:** do not use the 1.0.0 verifier or auditor job. Details in [`CHANGELOG.md`](../CHANGELOG.md) under 1.0.1.
+- **Action:** upgrade to 1.0.1; do not use the 1.0.0 verifier or auditor job. Details in [`CHANGELOG.md`](../CHANGELOG.md) under 1.0.1.
 
 ## Scope of the guarantees
 

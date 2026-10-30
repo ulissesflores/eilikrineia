@@ -3,7 +3,7 @@
 All notable changes are listed here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
-## [1.0.1] — unreleased
+## [1.0.1] — 2026-10-30
 
 ### Security
 - The pinned key list and the pinned auditor code now count only entries the owner really signed. In 1.0.0 the
