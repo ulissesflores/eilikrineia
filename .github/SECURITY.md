@@ -2,7 +2,8 @@
 
 ## Supported versions
 
-Only the latest release receives fixes. Version 1.0.0 is affected by the advisory below; use 1.0.1 or later.
+Only the latest release receives fixes. Version 1.0.0 is affected by the advisory below. The fix is on `main`;
+the 1.0.1 release is pending.
 
 ## Advisory: trust root in 1.0.0 (fixed in 1.0.1)
 
