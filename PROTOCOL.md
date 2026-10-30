@@ -200,7 +200,8 @@ back to older code (entry #77); 1.0.1 anchors both in the witness. Do not use a 
 ## Protocol 2 (draft, not implemented)
 
 Status: draft for review, revised after an adversarial review and after the decision that the agent's machine is
-hostile (both 2026-10-29). Nothing here is implemented; the program still writes and verifies protocol 1. Each
+hostile (both 2026-10-29), and again after an adversarial review of that revision (2026-10-30). Nothing here is
+implemented; the program still writes and verifies protocol 1. Each
 addition names the problem it solves and reuses protocol 1 where it can. Items marked [OPEN] wait for the owner's
 decision.
 
@@ -208,28 +209,37 @@ decision.
 
 Protocol 2 assumes that the machine where an agent runs is hostile, including root. On that machine the agent can
 read and write every file, run any code, delete hooks and local checks, show the owner anything on screen, withhold
-entries, and hand a signing key any bytes at the moment the owner approves. A guarantee of protocol 2 holds while
-trusting only four things that machine never holds:
+or reorder entries, push ordinary commits, and hand a signing key any bytes at the moment the owner approves. It
+does not hold the owner's signing device, a witness key or a runner key, and it cannot rewrite the protected
+remote's history. A guarantee of protocol 2 holds while trusting these anchors, which that machine never holds:
 
-1. **The owner's signing device** (2.3), which shows what it signs.
-2. **Witnesses with a quorum** (2.2), run by operators independent of each other and off the agent's machine.
-3. **Evidence runners** (2.4) that the agent does not operate.
-4. **The verifier**, pinned by the SHA-256 of a DOI-archived release that the reader obtains out of band. A reader
-   never runs code because the ledger names it.
+1. **The owner's signing device** (2.3), which computes and shows what it signs.
+2. **Witnesses with a majority quorum** (2.2), run by operators independent of each other and off the agent's
+   machine.
+3. **Evidence runners** (2.4) that the agent does not operate and whose jobs it cannot define.
+4. **The verifier**, pinned by the SHA-256 of a DOI-archived release whose signature the reader checks against an
+   owner fingerprint obtained out of band. A reader never runs code because the ledger names it.
+
+Protocol 2 also depends on the repository host, which enforces branch protection and the required check of 2.5, and
+on OpenTimestamps for an upper bound on time (2.9). Each dependency is named where it is used.
 
 What root on the agent's machine can still do, and what protocol 2 makes of it:
 
 | Attack from the agent's machine | Answer |
 |---|---|
-| Write evidence files and cite them | The evidence is `self_reported` (2.4); "tested" needs runner output |
-| Delete local hooks and checks | Enforcement lives where the work is consumed (2.5) |
-| Make the owner sign other bytes | The signing device computes and displays what it signs (2.3) |
-| Rewrite, cut or fork the ledger | Witnesses refuse a head that does not extend the last one they cosigned (2.2) |
-| Withhold an entry | Not prevented: omission is visible only as absence |
+| Write evidence files and cite them | The evidence is `self_reported`; `attested` needs a named run of an owner-listed command (2.4) |
+| Change the tests so they pass without checking | Only if the owner's `protected_paths` leave the harness open (2.5) |
+| Delete local hooks and checks, or post the status itself | The gate's own app is the only source of the required check (2.5) |
+| Make the owner sign other bytes | The device renders every field and computes every hash it signs (2.3) |
+| Register a runner or witness key it generated | Their fingerprints come over a channel that bypasses the agent (2.3, 2.4) |
+| Rewrite, cut or fork the witnessed ledger | Majority quorum; readers compare heads across witnesses (2.2) |
+| Withhold or bury an owner entry | The device submits owner entries to the witnesses itself (2.2, 2.3) |
+| Withhold its own entries | Not prevented: omission is visible only as absence |
 | Read private bodies stored on that machine | Not prevented: confidentiality holds only where the bodies are kept |
 
 Developing this tool is a separate concern from using it: agents that build the verifier are a supply-chain risk,
-answered by a protected default branch, releases signed by the owner's signing device, and adversarial review.
+answered by a protected default branch, releases signed by the owner under a namespace other than the ledger's
+(2.3), and adversarial review.
 
 ### 2.1 Versioning and fail-closed verification
 
@@ -238,44 +248,72 @@ answered by a protected default branch, releases signed by the owner's signing d
 - The hash of a protocol 2 entry MUST cover every top-level field except `hash` and `signature`. An absent field
   and a `null` field are different; writers MUST omit a field rather than set it to `null`. A JSON object with a
   duplicate key MUST be rejected.
+- A protocol 2 entry MUST carry a hashed `principal`, the exact name of the key line that signs it; the signature
+  is verified with `ssh-keygen -Y verify -I <principal>`. Principal names MUST match `[a-z0-9-]+`, and the role is
+  the part before the first `-`: `owner`, `agent` or `agent-<id>`, `auditor` or `auditor-<id>`, `witness-<id>`, `runner-<id>`.
+  Key lines MUST name exact principals: no wildcards, no comma lists, no `cert-authority`.
 - Fields introduced by protocol 2 are valid only on protocol 2 entries; on a protocol 1 entry they are unknown
   fields (protocol 1 would not hash them).
 - A protocol 2 verifier MUST report any unknown `type`, unknown top-level field, `protocol` value it does not
   implement, and any field on a type that does not allow it (rule 4 of protocol 1 carries over).
 - Each role has a closed list of types: `owner` (`genesis`, `keys`, `code`, `decision`, and agent types), `agent`
-  (`measured`, `assertion`, `opinion`, `correction`, `run`), `auditor` (`audit`, `checkpoint`), `witness-<id>`
-  (`witness_cosign` only), `runner-<id>` (`attested_run` only, 2.4).
+  (`measured`, `assertion`, `opinion`, `correction`, `run`), `auditor` (`audit`, `checkpoint`), `witness`
+  (`witness_cosign`), `runner` (`attested_run`).
 - Downgrade is forbidden: after the first protocol 2 entry, every later entry MUST be protocol 2.
 - The first protocol 2 entry MUST be an owner `code` entry naming the protocol 2 verifier release (its SHA-256 and
   DOI). It is a statement for readers, not an instruction to install: no component adopts code because the ledger
-  names it, and a reader pins the verifier from the release itself (2.0).
+  names it, and a reader pins the verifier from the release itself (2.0). The protocol 1 auditor job, which runs
+  pinned code in another OS account of the same machine, is not part of protocol 2.
 - A protocol 1 verifier reports every protocol 2 entry as altered, since it does not hash `protocol`; a 1.0.x
   release SHOULD say "unsupported protocol" instead.
 
-### 2.2 Witness quorum (`witness_cosign`)
+### 2.2 Witness quorum (`witness_cosign`) and policy
 
-Problem: the protocol 1 witness is a file in another OS account, outside the ledger; one operator can still show
-different heads to different readers.
+Problem: the protocol 1 witness is a file in another OS account of the same machine; one operator can still show
+different heads to different readers, and whoever forwards entries decides what the witnesses see.
 
+**Witnesses.**
 - Witnesses run off the agent's machine, each under an operator independent of the others; the operator of the
-  service is at most one of them. The protocol 1 witness in another OS account of the same machine does not count
-  toward a quorum.
-- Each witness has its own principal `witness-<id>` and its own key line, added by an owner `keys` entry. Principals
-  MUST be exact names: no wildcards, no comma lists, no `cert-authority`.
-- New type `witness_cosign` with a new field `cosigns`, which MUST equal `prev`: the witness vouches exactly for
-  the head it extends, never for entries it did not see. (`audits` is not reused: in protocol 1 it marks an alarm.)
-  A cosign has no private body; its `commitment` is 64 zeros and `verify --private` skips it.
-- A witness keeps state and cosigns only a head that extends the last head it cosigned; it takes the cosign `time`
-  from its own clock and refuses to cosign a head whose `time` is later than its clock plus a tolerance [OPEN:
-  tolerance, suggested 5 minutes].
+  service is at most one of them. The protocol 1 witness does not count toward a quorum.
+- Each witness has its own principal `witness-<id>`, whose key is generated on the witness and added by an owner
+  `keys` entry under the provenance rule of 2.3.
+- New type `witness_cosign` with a new field `cosigns`, which MUST equal `prev`. A cosign vouches for its head and
+  every entry before it; another witness cosigns by extending that cosign. (`audits` is not reused: in protocol 1
+  it marks an alarm.) A cosign has no private body; its `commitment` is 64 zeros and `verify --private` skips it.
+- A witness keeps state. Before it cosigns, it MUST check `seq`, `prev`, `hash` and the signature of every entry
+  between its last cosigned head and the new one, and refuse unless the new head extends the last.
+- A witness's first head MUST come from the owner's device or from a quorum of the existing witnesses, never from
+  the agent's machine. Entries before the first quorum-cosigned head are reported as unwitnessed protocol 1
+  history: a protocol 1 owner key lived inside the boundary that protocol 2 no longer trusts.
+- Time: the cosign `time` is the later of the witness's clock and the head's `time`. A witness refuses a head that
+  contains an entry dated later than its clock plus a tolerance, or earlier than its last cosign; and no entry's
+  `time` may be earlier than the `time` of the last `witness_cosign` before it. [OPEN: tolerance, suggested 5
+  minutes.]
+
+**Ordering and owner entries.**
+- Each writer builds on the latest quorum head it fetched from the witnesses; entries reach the witnesses from
+  anywhere and are checked against that head.
+- Owner entries and runner entries are submitted to the witnesses by the device or the runner itself (2.3, 2.4).
+  When a witness holds an owner entry whose `prev` is on its cosigned chain, it MUST NOT cosign a head that does
+  not contain it: a conflicting agent entry is the one that must be rebuilt on top.
+
+**Policy.**
 - New public field `policy` on protocol 2 owner `genesis` and `decision` entries:
-  `{"witness_quorum": N, "witnesses": ["<id>", ...]}`. Entries after the last head cosigned by at least `N` listed
-  witnesses with distinct keys form the **unwitnessed tail**; a verifier reports its length rather than failing.
-- Trust anchor outside the ledger: the owner key alone cannot prevent an owner who runs the service from creating
-  witness keys of his own. A verifier MUST compare the owner key fingerprint and the witness key fingerprints with a
-  source the operator does not control (for example, the witness's own published key, or a fingerprint printed on
-  the receipt and checked against the client's records). A reader MUST take the head from a quorum of witnesses, never
-  from the operator or the agent's machine, so a truncated copy that ends before a `policy` entry is detected.
+  `{"witness_quorum": N, "witnesses": [...], "commands": {...}, "runners": {...}, "protected_paths": [...]}`. The
+  last three are defined in 2.4 and 2.5.
+- `witness_quorum` MUST be greater than half the number of listed witnesses; a verifier rejects a policy with a
+  smaller quorum, with no witnesses, or with an empty `commands`.
+- A `policy` takes effect only after a head that contains it is cosigned under the previous policy.
+- Entries after the last head cosigned by a quorum of the policy in force form the **unwitnessed tail**; a verifier
+  reports its length rather than failing.
+
+**Readers.**
+- A reader MUST take the head from the witnesses, never from the operator or the agent's machine: it queries every
+  listed witness it can reach, requires a quorum, and rejects when any two returned heads are not one an extension
+  of the other.
+- A verifier MUST compare the owner and witness key fingerprints with a source the operator does not control, such
+  as each witness operator's own published key. A fingerprint on the receipt, or in records kept on the agent's
+  machine, does not qualify.
 
 ### 2.3 Owner signing device
 
@@ -283,27 +321,45 @@ Problem: root on the agent's machine cannot extract a key from hardware, but it 
 the moment the owner approves. A touch proves presence, not content: with a touch-only key, every approval gives a
 root agent one legitimate owner signature over bytes of its choice.
 
+**Custody.**
 - The owner key MUST NOT be reachable from the agent's machine: not as a file, not through a forwarded SSH agent.
   It lives on a signing device: a phone app with the key in the Secure Enclave or StrongBox, or a hardware signer
   with its own display.
-- The device receives the entry's fields, never a hash or a byte string to sign. It MUST parse the fields, compute
-  the canonical bytes and the `hash` itself, render the display from the same parsed fields, and sign only those
-  bytes. Display and signature then bind to the same data, whatever the host sent.
-- For an entry with a private body (`genesis`, `decision`, and any owner entry with text), the device also receives
-  the text and salt, recomputes `commitment`, and displays the text. The owner never signs a commitment
-  without seeing its text.
-- The display MUST show `seq`, `type`, `role`, `time` and the start of `prev`, and per type:
-  - `keys`: each principal added, removed or changed, with its key fingerprint, validity window and scopes (2.6).
-    The device keeps its own copy of the last key list it signed and computes the difference against that copy, not
-    against a list the host provides; if the host's base list differs from the device's copy, the device warns and
-    shows both.
-  - `code`: the release version, its SHA-256 and the release URL; the device SHOULD fetch the release over its own
-    network and compare the hash.
-  - any other type: the text and the claims.
-- The device keeps the last head it signed (`seq`, `hash`) and warns before signing an entry whose `seq` is not
-  greater, which is how a fork of the ledger would reach the owner.
 - Signatures stay in the SSHSIG format of protocol 1, which carries `ecdsa-sha2-nistp256` keys as held by the
   Secure Enclave and StrongBox: no wire change.
+- The device MUST use namespace `eilikrineia` only over an entry hash it computed itself. Release signatures MUST
+  use another namespace (`eilikrineia-release`) and SHOULD use another key, so that a "release" whose content is an
+  entry hash is never a valid ledger signature.
+
+**What the device computes.**
+- The device receives the entry's fields, never a hash or a byte string to sign. It MUST parse the fields, compute
+  the canonical bytes and the `hash` itself, render the display from the same parsed fields, and sign only those
+  bytes.
+- For every hash field it MUST receive the underlying bytes, compute the hash itself, render from those bytes, and
+  ignore any hash the host sent:
+  - `commitment`: the text, salt, claims and attachments of the private body;
+  - `signers_sha256`: the whole new key list;
+  - `code_sha256`: the release file, fetched by the device over its own network from the release URL.
+
+**What the device shows.**
+- It MUST render every top-level field of the entry and refuse to sign an entry with a field it cannot render.
+- Text and claims in full, never truncated. It refuses control characters, bidirectional overrides, zero-width
+  characters, and any character it cannot display.
+- `keys`: each principal added, removed or changed, with its fingerprint, validity window and scopes (2.6),
+  computed against the device's own copy of the last key list it signed (with no copy, the whole list as
+  additions). If the host's base list differs from that copy, the device warns and shows both.
+- Provenance of a new runner or witness key: the device MUST obtain the fingerprint over a channel that does not
+  pass through the agent's machine (the runner's or witness operator's own published key) and show where it came
+  from. A key generated on the agent's machine never matches that source.
+- `policy`: the difference against the device's own copy of the last policy it signed.
+- `decision` that resolves an alarm: the alarm text (2.5).
+
+**Where the device signs.**
+- The device fetches the quorum head from the witnesses over its own network and signs only an entry whose `prev`
+  extends it. It submits the signed entry to the witnesses itself and shows it as pending until a quorum cosigns a
+  head that contains it. An owner revocation therefore cannot be withheld by the agent.
+
+**Scope.**
 - A verifier cannot tell which device produced a signature. This section binds implementations of the signer, and
   a deployment that keeps the owner key on the agent's machine has none of the guarantees of 2.0.
 - [OPEN] Transport between the agent's machine and the device (QR code, push through the service). The transport
@@ -314,54 +370,76 @@ root agent one legitimate owner signature over bytes of its choice.
 Problem: in protocol 1 a `measured` entry proves that a file says something, not that a command produced it. The
 agent can write the file it cites.
 
-- A runner is a principal `runner-<id>` with role `runner`, whose key line is added by an owner `keys` entry. It
-  runs off the agent's machine (a CI job, the service's runner), and its key never reaches that machine. Role
-  `runner` records one type: `attested_run`.
+**Runners.**
+- A runner is a principal `runner-<id>`. Its key is generated on the runner and added by an owner `keys` entry
+  under the provenance rule of 2.3. Role `runner` records one type: `attested_run`.
+- The runner key MUST NOT be available to any job whose definition, workflow or image can be changed from a ref the
+  agent can push. A CI job defined in the agent's own repository does not qualify.
+- New public field in `policy` (2.2): `"runners": {"runner-<id>": "<image digest>"}`. A run counts only if its
+  `environment` matches the digest pinned for its runner.
+- New public field in `policy`: `"commands": {"<name>": "<command line>"}`. A runner MUST run only command lines
+  listed there, byte for byte.
 - The runner fetches its input itself, by commit id, from the protected remote. It never accepts a tree uploaded
-  from the agent's machine.
-- New type `attested_run` with new public fields:
-  - `input`: `{"repo": "<URL>", "commit": "<id>", "tree": "<git tree id>"}`;
-  - `command`: the exact command line it ran;
-  - `exit_code` (integer) and `duration_ms` (integer);
-  - `environment`: the runner version and the digest of the image it ran in.
-  Its standard output and standard error are attachments, committed by hash like any other evidence; its private
-  body holds them in the vault.
-- The tier of a claim is **derived by the verifier**, never written by an agent: a claim is `attested` when the
-  SHA-256 of its evidence file equals an output attachment of an earlier `attested_run` signed by a runner key in
-  force; otherwise it is `self_reported`. An entry is `attested` only when every claim in it is. A field that
+  from the agent's machine. It submits its entry to the witnesses itself, so a failing run cannot be withheld.
+
+**`attested_run`.** New type with new public fields:
+- `input`: `{"repo": "<URL>", "commit": "<id>", "tree": "<git tree id>"}`;
+- `command`: the exact command line it ran;
+- `exit_code` (integer) and `duration_ms` (integer);
+- `environment`: the runner version and the digest of the image it ran in.
+
+Its standard output and standard error are attachments, committed by hash like any other evidence; its private
+body holds them in the vault.
+
+**Tiers.**
+- The tier of a claim is **derived by the verifier**, never written by an agent. A claim is `attested` when its
+  claim object names an `attested_run` by hash (`"run": "<hash>"`), that run is earlier, signed by a runner in force
+  and counts under the policy, and the SHA-256 of the claim's evidence file equals one of that run's output
+  attachments. Otherwise it is `self_reported`. An entry is `attested` only when every claim in it is. A field that
   declares a tier is an unknown field and is rejected (2.1).
-- `attested` means: this runner, on this commit, ran this command and this was the output. It does not mean that
-  the command tests what the agent says it tests.
-- New public field in `policy` (2.2): `"commands": {"<name>": "<command line>"}`, the commands the owner accepts as
-  checks for the gate of 2.5.
+- A verifier MUST report the run's `input.commit` and `command` next to the tier, so a claim about one commit that
+  cites a run on another is visible.
+- `attested` means: this runner, on this commit, ran this owner-listed command and this was the output. It does not
+  mean that the command tests what the agent says it tests; 2.5 closes that gap only for the paths the owner
+  protects.
 - [OPEN] More than one runner per command, so that a single compromised runner key cannot forge a passing run.
 
 ### 2.5 Enforcement at the point of use
 
-Problem: root on the agent's machine deletes local hooks and the checks they run. Any enforcement on that machine
-is advisory.
+Problem: root on the agent's machine deletes local hooks and the checks they run, and anyone with write access to a
+repository can set the state of a status check. Any enforcement on that machine is advisory.
 
 - Enforcement lives where the work is consumed: a required status check on the protected branch, enforced by the
   repository host, and the service, which refuses to issue a receipt (2.9). Local hooks stay useful as fast
   feedback, never as enforcement.
-- The check fails closed. It passes for a commit only when:
-  1. for every command in the owner's `policy`, an `attested_run` on that exact commit has `exit_code` 0;
-  2. those entries lie inside the witnessed part of the ledger (2.2), read from the witnesses, not from the agent's
-     machine;
-  3. no `audit` alarm is newer than the last owner `decision` that resolves it.
-- The agent MUST NOT hold credentials that can change the branch protection or the required checks; a deployment
-  where it does has no gate.
+- The required check MUST name the gate's own app as its only expected source, and no credential the agent holds
+  may write statuses as that app. The agent MUST NOT hold credentials that can change the branch protection, the
+  required checks or the rulesets; a deployment where it does has no gate.
+- New public field in `policy` (2.2): `"protected_paths": ["<path or glob>", ...]`, the test harness and the files
+  it trusts (test configuration, build scripts, interpreter start-up hooks).
+- The check fails closed. It passes for a commit only when, reading entries from anywhere and checking them against
+  a head taken from a quorum of witnesses (2.2):
+  1. for every command in the policy, the latest `attested_run` on that exact commit, with `command` byte-equal to
+     the policy's line, has `exit_code` 0;
+  2. every path in `protected_paths` is byte-identical to the last commit an owner `decision` names in the hashed field
+     `reviewed: "<commit id>"`;
+  3. those entries lie inside the witnessed part of the ledger;
+  4. no `audit` alarm is unresolved. An alarm counts only when signed by an auditor principal that runs off the
+     agent's machine under the key rules of a runner (2.4); it is resolved only by an owner `decision` carrying the
+     hashed field `resolves: "<audit hash>"`, whose device displays the alarm (2.3).
+- Without `protected_paths`, a passing check means only that the tree's own commands exited 0 on that commit.
 
 ### 2.6 Scoped agent keys (`grant`)
 
 Problem: an agent key may record every agent type at any time it is valid.
 
 - Time windows already exist: `valid-after` and `valid-before` in the key list. Because `time` is declared by the
-  writer, an expiry is only as strong as the witness clock of 2.2.
+  writer, an expiry holds through the bounds of 2.2: no entry may be dated before the last cosign, nor after the
+  witness's clock plus the tolerance.
 - New public field `scopes` on protocol 2 owner `keys` entries: `{"<principal>": ["measured", "run", ...]}`. The
   types a principal may record are the intersection of its scope with its role's types. A scope stays in force
   until a later `keys` entry replaces it; a `keys` entry without `scopes` keeps the previous scopes.
-- Scopes apply per principal; to scope one key, give it its own principal (`agent-<id>`, role `agent`).
+- Scopes apply per principal (2.1); to scope one key, give it its own principal (`agent-<id>`).
 
 ### 2.7 Memory seals (convention, no wire change)
 
