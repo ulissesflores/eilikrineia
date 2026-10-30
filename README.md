@@ -196,7 +196,7 @@ private/            never published: texts, salts, gzip evidence vault, private 
 
 ## Citation
 
-Each release is archived on Zenodo with its own DOI. The concept DOI [10.5281/zenodo.23752630](https://doi.org/10.5281/zenodo.23752630) always resolves to the latest version; version 1.0.0 is [10.5281/zenodo.23752631](https://doi.org/10.5281/zenodo.23752631). Cite with [`CITATION.cff`](CITATION.cff) or:
+Each release is archived on Zenodo with its own DOI. The concept DOI [10.5281/zenodo.23752630](https://doi.org/10.5281/zenodo.23752630) always resolves to the latest version; version 1.0.1 is [10.5281/zenodo.23820676](https://doi.org/10.5281/zenodo.23820676) and version 1.0.0 is [10.5281/zenodo.23752631](https://doi.org/10.5281/zenodo.23752631). Cite with [`CITATION.cff`](CITATION.cff) or:
 
 ```bibtex
 @software{flores2026eilikrineia,
