@@ -19,6 +19,11 @@
 > program cut and proved, never whole files. The owner signs the root, every key change and every change to the
 > auditor's code. Nothing is edited; changing position is a visible correction.
 
+> [!WARNING]
+> These mechanisms hold only while the agent cannot reach the owner's key, the auditor's account or the witness file
+> (see [What is and isn't guaranteed](#what-is-and-isnt-guaranteed)). Version 1.0.0 has a trust-root defect: do not
+> use its verifier or its auditor job ([`.github/SECURITY.md`](.github/SECURITY.md)).
+
 ## The word
 
 **εἰλικρίνεια** (*eilikríneia*) is the Greek word for sincerity, purity of intent, what has no admixture. Lexicons
@@ -54,8 +59,9 @@ Plato's *Phaedo* (65e–66a) describes seeking truth "with pure thought, itself 
    audited; automated measurements are sampled with a seed taken from a later head. Each auditor run signs one
    checkpoint that carries all its verdicts, audits only what came after the previous one, and an idle ledger adds
    nothing.
-3. **No silent rewrite.** A witness in the auditor's separate account records every entry hash within seconds of it
-   being written; an entry already seen that changes or vanishes raises a signed alarm. Published history is
+3. **No silent rewrite.** A witness in the auditor's separate account records every entry hash each time the
+   auditor's job runs (hourly, and not while the machine sleeps); an entry already seen that changes or vanishes
+   raises a signed alarm. Published history is
    protected by the remote's branch protection, Software Heritage and OpenTimestamps.
 
 ```mermaid
@@ -124,18 +130,31 @@ See [`PROTOCOL.md`](PROTOCOL.md) for roles, types, claims and the rules an agent
 
 ## What is and isn't guaranteed
 
-**Guaranteed, and tested** ([`tests/`](tests)):
-- every entry existed exactly as published at its timestamp; none was altered or removed afterwards;
-- which key signed each entry, checked against the keys valid at the entry's time;
-- the key list and the auditor's code are the ones the owner last signed;
-- every excerpt an auditor read is the one recorded, from the file whose hash was committed;
-- a rewrite of entries already witnessed is detected and alarmed.
+> [!CAUTION]
+> **Trust boundary.** Everything below assumes the agent cannot reach the owner's private key or passphrase, the
+> auditor's OS account, or the witness file. An agent that can become root on the machine (for example, through an
+> administrator password stored where its account can read it) can defeat every item. Run agents as a standard
+> user without administrator rights, or read the ledger as bookkeeping kept by a cooperative agent.
+> [Protocol 2](PROTOCOL.md#protocol-2-draft-not-implemented) is designed for a hostile agent machine; it is not
+> implemented.
+
+**Checked by code, inside that boundary.** The tests ([`tests/`](tests)) exercise each check on one machine and one
+account; none crosses the boundary between accounts.
+- Every published entry is linked to the one before it: changing or removing one breaks every later hash.
+- Which key signed each entry, against the key list the owner had signed when the entry was written.
+- The key list and the auditor's pinned code are the ones the owner last signed.
+- Every excerpt an auditor read is the one recorded, cut from the file whose hash was committed.
+- An entry already witnessed that changes or vanishes raises a signed alarm.
 
 **Not guaranteed:**
 - that a statement is true. It is traceable, contestable and costly to sustain if false;
+- that evidence came from running anything: a `measured` entry proves what a file says, and the agent may have
+  written the file;
+- when an entry was written: `time` is declared by the writer, and OpenTimestamps gives only an upper bound, once a
+  later head is stamped;
 - which model produced a sentence: a signature proves a key, not a mind;
 - what was never recorded. Omission has no mechanical lock; the protocol makes it a failure;
-- a few seconds remain between an agent writing an entry and the witness recording it.
+- entries rewritten between two runs of the witness: the gap is up to an hour, longer while the machine sleeps.
 
 **Frozen, not re-runnable:** the ledgers in [`history/`](history). `v0` (agent-only keys) and `v1` (first owner
 genesis) were recorded in Portuguese with the schema of that time; their field names are part of their hashes and

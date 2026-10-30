@@ -3,7 +3,7 @@
 All notable changes are listed here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
-## [1.0.1] — 2026-10-29
+## [1.0.1] — unreleased
 
 ### Security
 - The pinned key list and the pinned auditor code now count only entries the owner really signed. In 1.0.0 the
@@ -21,13 +21,25 @@ versions follow [SemVer](https://semver.org/).
   tail cannot bring back older or foreign code (second adversarial review, entry #77). Entries that go back in
   time or are not JSON objects end the trusted prefix; malformed signatures no longer crash the check; the key
   list is hashed and handed to `ssh-keygen` from the same bytes.
-- `scripts/auditor-run.sh` runs the witness before deciding to adopt new code. It is installed as root in the
-  auditor's account: re-run `scripts/install-auditor-macos.sh` with `sudo` after signing this release's code.
+- `scripts/auditor-run.sh` runs the witness before deciding to adopt new code.
+- Guarantees scoped in `README.md`, `PROTOCOL.md` and `.github/SECURITY.md`: they hold only while the agent cannot
+  reach the owner's key, the auditor's account or the witness file. The witness gap is up to an hour, longer while
+  the machine sleeps (was: "a few seconds").
+
+### Known limitations
+- A third adversarial review of this release's code (2026-10-29) found that the auditor job's automatic adoption of
+  owner-signed code still fails against an adversary on the same machine: replacing only the signature of the
+  latest owner `code` entry makes the pinned code fall back to an older owner-signed hash, and a race between
+  `pinned-ok` and the copy in `scripts/auditor-run.sh` can install unchecked code. This repository's auditor job is
+  paused until automatic adoption is removed.
 
 ### Added
 - `PROTOCOL.md`: normative wire format and verification of protocol 1, as implemented, and the protocol 2 draft
   (versioning with fail-closed verification, witness quorum, scoped agent keys, memory seals, tool calls,
-  receipts). Nothing of protocol 2 is implemented.
+  receipts), revised for a hostile agent machine: threat model, owner signing device that displays what it signs,
+  evidence runners with tiers derived by the verifier, enforcement at the point of use. Nothing of protocol 2 is
+  implemented.
+- `.github/SECURITY.md`: advisory for 1.0.0 and private vulnerability reporting.
 
 ## [1.0.0] — 2026-10-29
 
