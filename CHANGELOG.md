@@ -3,6 +3,12 @@
 All notable changes are listed here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- README in Portuguese, Spanish, Italian and Hebrew (`README.<lang>.md`), each a translation of a named commit of
+  `README.md`; English is authoritative. The four files join `PUBLIC`, so `publish` adds them.
+
 ## [1.0.1] — 2026-10-30
 
 ### Security
