@@ -332,12 +332,18 @@ def key_lists(chain, root=None):
 
 
 def owner_signed(chain, kinds, field, root=None):
-    """Return ``field`` of the last owner entry of a type in ``kinds`` that the owner really signed (see key_lists)."""
+    """Return ``field`` of the last owner entry of a type in ``kinds`` that the owner really signed (see key_lists).
+
+    Fails closed: an owner entry of such a type whose signature does not verify yields None, never the value before
+    it. The signature is outside the hash, so the witness cannot see it replaced; skipping the entry would let that
+    replacement roll the pinned value back to an older owner-signed one.
+    """
     found = None
     for e, keys in zip(chain, key_lists(chain, root), strict=False):
         if keys and e.get("role") == "owner" and e.get("type") in kinds and field in e:
-            if signature_ok("owner", e["hash"], e.get("signature", ""), root, e.get("time"), keys):
-                found = e[field]
+            if not signature_ok("owner", e["hash"], e.get("signature", ""), root, e.get("time"), keys):
+                return None
+            found = e[field]
     return found
 
 

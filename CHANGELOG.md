@@ -21,17 +21,16 @@ versions follow [SemVer](https://semver.org/).
   tail cannot bring back older or foreign code (second adversarial review, entry #77). Entries that go back in
   time or are not JSON objects end the trusted prefix; malformed signatures no longer crash the check; the key
   list is hashed and handed to `ssh-keygen` from the same bytes.
-- `scripts/auditor-run.sh` runs the witness before deciding to adopt new code.
+- The auditor job no longer adopts code by itself: the pinned copy changes only when the owner signs a `code` entry
+  and re-runs `scripts/install-auditor-macos.sh` with `sudo`. A third adversarial review (2026-10-29) showed that
+  automatic adoption fails against an adversary on the same machine (a race between `pinned-ok` and the copy could
+  install unchecked code). The job still runs the witness first.
+- An owner `genesis`, `keys` or `code` entry whose signature does not verify now pins nothing. The signature is
+  outside the hash, so the witness cannot see it replaced, and skipping the entry rolled the pinned code back to
+  an older owner-signed hash (same review).
 - Guarantees scoped in `README.md`, `PROTOCOL.md` and `.github/SECURITY.md`: they hold only while the agent cannot
   reach the owner's key, the auditor's account or the witness file. The witness gap is up to an hour, longer while
   the machine sleeps (was: "a few seconds").
-
-### Known limitations
-- A third adversarial review of this release's code (2026-10-29) found that the auditor job's automatic adoption of
-  owner-signed code still fails against an adversary on the same machine: replacing only the signature of the
-  latest owner `code` entry makes the pinned code fall back to an older owner-signed hash, and a race between
-  `pinned-ok` and the copy in `scripts/auditor-run.sh` can install unchecked code. This repository's auditor job is
-  paused until automatic adoption is removed.
 
 ### Added
 - `PROTOCOL.md`: normative wire format and verification of protocol 1, as implemented, and the protocol 2 draft

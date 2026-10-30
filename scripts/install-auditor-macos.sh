@@ -7,7 +7,8 @@
 # - the auditor's private key and the GitHub deploy key (write access to this repository only) live only in
 #   the auditor's account;
 # - the scheduler runs auditor-run.sh (owned by root) on every change to chain/ and hourly;
-# - that job runs a pinned copy of eilikrineia.py that changes only to an owner-signed hash;
+# - that job runs a pinned copy of eilikrineia.py that changes only when the owner re-runs this installer, and
+#   only to an owner-signed hash;
 # - pushes go over ssh:// with the deploy key, so a session in the owner's account cannot push.
 set -euo pipefail
 REPO=${1:?repository path}

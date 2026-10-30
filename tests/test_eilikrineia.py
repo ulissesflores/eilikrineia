@@ -303,6 +303,19 @@ class PinnedCode(Ledger):
             os.environ.pop("EILIKRINEIA_KEY_OWNER")
         self.assertFalse(ek.pinned_ok(evil, self.root))
 
+    def test_owner_entry_with_a_replaced_signature_pins_nothing(self):
+        code = self.root / "eilikrineia.py"
+        old = code.read_bytes()
+        code.write_text(code.read_text() + "\n# new owner-approved code\n")
+        e = ek.record("owner", "code", "I approve the new code.", root=self.root)
+        path = self.root / "chain" / f"{e['seq']:06d}.json"
+        stripped = json.loads(path.read_text())
+        stripped["signature"] = ek.sign("agent", stripped["hash"], self.root)  # the hash is unchanged
+        path.write_text(json.dumps(stripped))
+        self.assertIsNone(ek.committed_code(ek.entries(self.root), self.root))
+        code.write_bytes(old)
+        self.assertFalse(ek.pinned_ok(code, self.root))
+
     def test_unknown_type_role_and_field_are_problems(self):
         self.forge({"type": "receipt", "status": "located_and_matched"}, sign_as="agent")
         problems = " ".join(ek.verify(self.root)["problems"])
