@@ -825,9 +825,9 @@ def pinned_ok(code_path, root=None, ledger=None):
 # ---------- timestamping and publishing ----------
 
 PUBLIC = (
-    "README.md", "PROTOCOL.md", "CHANGELOG.md", "LICENSE", "LICENSES", "NOTICE", "CITATION.cff",
-    "codemeta.json", ".zenodo.json", "pyproject.toml", "eilikrineia.py", "tests", "scripts", ".github",
-    ".gitignore", "chain", "keys", "stamps", "history",
+    "README.md", "README.pt-BR.md", "README.es.md", "README.it.md", "README.he.md", "PROTOCOL.md", "CHANGELOG.md",
+    "LICENSE", "LICENSES", "NOTICE", "CITATION.cff", "codemeta.json", ".zenodo.json", "pyproject.toml",
+    "eilikrineia.py", "tests", "scripts", ".github", ".gitignore", "chain", "keys", "stamps", "history",
 )  # fmt: skip
 FORBIDDEN = ("PRIVATE KEY", "BEGIN OPENSSH")
 
