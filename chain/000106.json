@@ -1,0 +1,12 @@
+{
+ "seq": 106,
+ "time": "2026-10-31T19:55:09Z",
+ "role": "owner",
+ "type": "code",
+ "commitment": "a286129706558cab461ab698f83899ae7f02b5ddde4e52b51a311da113b6b1d8",
+ "attachments": [],
+ "prev": "e2b2ab4eb21318eab78003a87d06fbcd3f59f6f7ff81dc4abd866068c7228e51",
+ "code_sha256": "e0e7542291078f4f402ec636f9e977b4833314538102a79017f9f056e42a49d9",
+ "hash": "c5e379ad0af59ddccb6946af1dd87f7516092ee70c9c56ba9c390e71d757d116",
+ "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg9KS6cpa/PN74EnaBrZI6RQA05Z\nYdH2RvNAcNRHcIjnEAAAALZWlsaWtyaW5laWEAAAAAAAAABnNoYTUxMgAAAFMAAAALc3No\nLWVkMjU1MTkAAABAciqTORiEJQcmCakpcMXrWt4E3rUcRMFeK2myU5iRjpadxHQekg2rSf\ngezWKw+emn/m8hSjFeNW+Tll2n64qDAw==\n-----END SSH SIGNATURE-----\n"
+}
