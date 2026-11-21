@@ -1,0 +1,13 @@
+{
+ "seq": 2526,
+ "time": "2026-11-21T20:28:56Z",
+ "role": "agent",
+ "type": "run",
+ "commitment": "1acd21de7d2faab80ba4e8fd49664a09f2241b095670c545e8c3c686ac2a356b",
+ "attachments": [
+  "32798d487cc17af81e7bb1bb97773c3e4afce7befeb09192344241a9786b7061"
+ ],
+ "prev": "8d3ef3cdaa20b3f42dd4192a8213cc70120f780fab74b1c8840d8e92359f8b7b",
+ "hash": "4e2bf24cf06d6728e0251f192da902cdb9076865fc84b7ddaa713ad68cbc6af6",
+ "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBjBfPvFqwoMWTWe8ORlSkAfHP5\n6yf6IEC0bqWDqxS38AAAALZWlsaWtyaW5laWEAAAAAAAAABnNoYTUxMgAAAFMAAAALc3No\nLWVkMjU1MTkAAABApcVd46KtrciMLDOeWkIn8gEGPlQr1/sbLjkL2xCqHNWsaOrHLDJu9g\nfokBSJB85cR1CvBvPHdtZcSDXokxloAQ==\n-----END SSH SIGNATURE-----\n"
+}
